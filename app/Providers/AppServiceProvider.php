@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\ActivityLog;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -24,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        Route::bind('activityLog', fn ($value) => ActivityLog::where('id', $value)
+            ->where('user_id', auth()->id())
+            ->firstOrFail());
     }
 
     /**

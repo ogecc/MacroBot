@@ -4,8 +4,6 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\WeightLog;
-use Illuminate\Auth\Access\Response;
-
 class WeightLogPolicy
 {
     /**

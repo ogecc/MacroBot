@@ -2,9 +2,7 @@
 
 namespace App\Services;
 
-use App\Enums\ActivityLevel;
 use App\Enums\Gender;
-use App\Enums\Goal;
 use App\Models\UserProfile;
 
 class CalorieGoalCalculator
@@ -13,21 +11,9 @@ class CalorieGoalCalculator
     {
         $bmr = $this->bmr($profile);
 
-        $multiplier = match ($profile->activity_level) {
-            ActivityLevel::Sedentary => 1.2,
-            ActivityLevel::LightlyActive => 1.375,
-            ActivityLevel::ModeratelyActive => 1.55,
-            ActivityLevel::VeryActive => 1.725,
-            ActivityLevel::ExtremelyActive => 1.9,
-        };
+        $multiplier = 1.2; // sedentary baseline — actual activity is logged daily
 
-        $adjustment = match ($profile->goal) {
-            Goal::Lose => -500,
-            Goal::Maintain => 0,
-            Goal::Gain => 300,
-        };
-
-        $calories = (int) round($bmr * $multiplier + $adjustment);
+        $calories = (int) round($bmr * $multiplier);
 
         return max(1200, $calories);
     }

@@ -8,7 +8,6 @@ $validPayload = [
     'gender' => 'male',
     'height_cm' => 178,
     'weight_kg' => 75.5,
-    'activity_level' => 'moderately_active',
     'goal' => 'maintain',
     'target_weight_kg' => null,
 ];
@@ -73,7 +72,7 @@ test('onboarding fails with age below 13', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->post(route('onboarding.update'), ['age' => 10, 'gender' => 'male', 'height_cm' => 170, 'weight_kg' => 60, 'activity_level' => 'sedentary', 'goal' => 'maintain'])
+        ->post(route('onboarding.update'), ['age' => 10, 'gender' => 'male', 'height_cm' => 170, 'weight_kg' => 60, 'goal' => 'maintain'])
         ->assertSessionHasErrors('age');
 });
 
@@ -81,14 +80,6 @@ test('onboarding fails with age above 120', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->post(route('onboarding.update'), ['age' => 130, 'gender' => 'male', 'height_cm' => 170, 'weight_kg' => 60, 'activity_level' => 'sedentary', 'goal' => 'maintain'])
+        ->post(route('onboarding.update'), ['age' => 130, 'gender' => 'male', 'height_cm' => 170, 'weight_kg' => 60, 'goal' => 'maintain'])
         ->assertSessionHasErrors('age');
-});
-
-test('onboarding fails with invalid activity level', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->post(route('onboarding.update'), ['age' => 25, 'gender' => 'male', 'height_cm' => 170, 'weight_kg' => 60, 'activity_level' => 'super_active', 'goal' => 'maintain'])
-        ->assertSessionHasErrors('activity_level');
 });

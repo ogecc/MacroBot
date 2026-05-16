@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
-use App\Enums\ActivityLevel;
 use App\Enums\Gender;
 use App\Enums\Goal;
+use Database\Factories\UserProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserProfile extends Model
 {
-    /** @use HasFactory<\Database\Factories\UserProfileFactory> */
+    /** @use HasFactory<UserProfileFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -20,8 +20,8 @@ class UserProfile extends Model
         'gender',
         'height_cm',
         'weight_kg',
-        'activity_level',
         'goal',
+        'goal_adjustment',
         'target_weight_kg',
         'daily_calorie_goal',
         'locale',
@@ -31,7 +31,6 @@ class UserProfile extends Model
     {
         return [
             'gender' => Gender::class,
-            'activity_level' => ActivityLevel::class,
             'goal' => Goal::class,
             'weight_kg' => 'decimal:2',
             'target_weight_kg' => 'decimal:2',

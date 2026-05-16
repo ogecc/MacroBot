@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,12 +40,33 @@ class DashboardController extends Controller
             ])
             ->values();
 
+        $todayActivities = ActivityLog::where('user_id', $user->id)
+            ->whereDate('logged_at', $today)
+            ->orderBy('logged_at')
+            ->get()
+            ->map(fn ($a) => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'duration_min' => $a->duration_min,
+                'calories_burned' => $a->calories_burned,
+                'intensity' => $a->intensity,
+            ]);
+
+        $todayActivityCalories = $todayActivities->sum('calories_burned');
+
+        $firstWeightLog = $user->weightLogs()->orderBy('logged_at')->first();
+
         return Inertia::render('Dashboard', [
             'dailyCalorieGoal' => $user->userProfile->daily_calorie_goal,
+            'goal' => $user->userProfile->goal,
+            'goalAdjustment' => $user->userProfile->goal_adjustment,
             'todayTotals' => $todayTotals,
             'recentMealsByDay' => $recentMealsByDay,
             'currentWeight' => (float) $user->userProfile->weight_kg,
+            'startWeight' => $firstWeightLog ? (float) $firstWeightLog->weight_kg : (float) $user->userProfile->weight_kg,
             'targetWeight' => $user->userProfile->target_weight_kg ? (float) $user->userProfile->target_weight_kg : null,
+            'todayActivities' => $todayActivities,
+            'todayActivityCalories' => (int) $todayActivityCalories,
         ]);
     }
 }

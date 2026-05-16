@@ -23,6 +23,7 @@ class OnboardingController extends Controller
         $profile = $request->user()->userProfile()->firstOrNew();
 
         $profile->fill($request->validated());
+        $profile->goal_adjustment = null;
         $profile->daily_calorie_goal = $calculator->calculate($profile);
         $profile->user_id = $request->user()->id;
         $profile->save();

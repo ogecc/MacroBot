@@ -7,7 +7,6 @@ $validPayload = [
     'gender' => 'female',
     'height_cm' => 165,
     'weight_kg' => 65.0,
-    'activity_level' => 'lightly_active',
     'goal' => 'lose',
     'target_weight_kg' => 60.0,
 ];
@@ -40,7 +39,7 @@ test('user can update their profile', function () use (&$validPayload) {
 
     $this->actingAs($user)
         ->put(route('fitness.update'), $validPayload)
-        ->assertRedirect(route('fitness.edit'));
+        ->assertRedirect(route('dashboard'));
 
     $this->assertDatabaseHas('user_profiles', [
         'user_id' => $user->id,
