@@ -1,0 +1,29 @@
+<?php
+
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FitnessProfileController;
+use App\Http\Controllers\MealAnalysisController;
+use App\Http\Controllers\MealController;
+use App\Http\Controllers\OnboardingController;
+use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Features;
+
+Route::inertia('/', 'Welcome', [
+    'canRegister' => Features::enabled(Features::registration()),
+])->name('home');
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('onboarding', [OnboardingController::class, 'edit'])->name('onboarding.edit');
+    Route::post('onboarding', [OnboardingController::class, 'update'])->name('onboarding.update');
+
+    Route::middleware('profile.complete')->group(function () {
+        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('fitness-profile', [FitnessProfileController::class, 'edit'])->name('fitness.edit');
+        Route::put('fitness-profile', [FitnessProfileController::class, 'update'])->name('fitness.update');
+        Route::patch('fitness-profile/weight', [FitnessProfileController::class, 'updateWeight'])->name('fitness.weight');
+        Route::post('meals/analyze', [MealAnalysisController::class, 'store'])->name('meals.analyze')->middleware('throttle:20,60');
+        Route::resource('meals', MealController::class)->except(['show', 'create', 'index']);
+    });
+});
+
+require __DIR__.'/settings.php';

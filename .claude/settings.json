@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*artisan test*)",
+      "Bash(*artisan migrate:status*)",
+      "Bash(*artisan config:show *)",
+      "Bash(*artisan route:list*)"
+    ]
+  }
+}
