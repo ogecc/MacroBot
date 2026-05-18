@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(inertia-vue-development)",
+      "Skill(inertia-vue-development:*)"
+    ]
+  }
+}

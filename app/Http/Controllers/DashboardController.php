@@ -56,6 +56,29 @@ class DashboardController extends Controller
 
         $firstWeightLog = $user->weightLogs()->orderBy('logged_at')->first();
 
+        $mealDates = $user->meals()
+            ->orderByDesc('eaten_at')
+            ->pluck('eaten_at')
+            ->map(fn ($dt) => \Carbon\Carbon::parse($dt)->toDateString())
+            ->unique()
+            ->values();
+
+        $streak = 0;
+        $checkDate = now()->startOfDay();
+
+        if (! $mealDates->contains($checkDate->toDateString())) {
+            $checkDate = $checkDate->subDay();
+        }
+
+        foreach ($mealDates as $date) {
+            if ($date === $checkDate->toDateString()) {
+                $streak++;
+                $checkDate = $checkDate->subDay();
+            } else {
+                break;
+            }
+        }
+
         return Inertia::render('Dashboard', [
             'dailyCalorieGoal' => $user->userProfile->daily_calorie_goal,
             'goal' => $user->userProfile->goal,
@@ -67,6 +90,8 @@ class DashboardController extends Controller
             'targetWeight' => $user->userProfile->target_weight_kg ? (float) $user->userProfile->target_weight_kg : null,
             'todayActivities' => $todayActivities,
             'todayActivityCalories' => (int) $todayActivityCalories,
+            'voiceEnabled' => (bool) env('VOICE_TRANSCRIPTION_ENABLED', false),
+            'streak' => $streak,
         ]);
     }
 }

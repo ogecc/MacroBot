@@ -7,6 +7,7 @@ use App\Http\Controllers\FitnessProfileController;
 use App\Http\Controllers\MealAnalysisController;
 use App\Http\Controllers\MealController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\VoiceTranscriptionController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -26,6 +27,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('fitness-profile/goal-adjustment', [FitnessProfileController::class, 'updateGoalAdjustment'])->name('fitness.goalAdjustment');
         Route::post('meals/analyze', [MealAnalysisController::class, 'store'])->name('meals.analyze')->middleware('throttle:20,60');
         Route::resource('meals', MealController::class)->except(['show', 'create', 'index']);
+
+        Route::post('voice/transcribe', [VoiceTranscriptionController::class, 'store'])->name('voice.transcribe')->middleware('throttle:20,60');
 
         Route::post('activities/analyze', [ActivityAnalysisController::class, 'store'])->name('activities.analyze')->middleware('throttle:20,60');
         Route::post('activities', [ActivityController::class, 'store'])->name('activities.store');

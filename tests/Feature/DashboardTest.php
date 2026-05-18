@@ -106,3 +106,52 @@ test('dashboard passes currentWeight from user profile', function () {
             ->where('currentWeight', 82.5)
         );
 });
+
+test('streak is 0 when no meals logged', function () {
+    $user = User::factory()->withProfile()->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->where('streak', 0));
+});
+
+test('streak is 1 when meals logged only today', function () {
+    $user = User::factory()->withProfile()->create();
+    Meal::factory()->for($user)->create(['eaten_at' => now()]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->where('streak', 1));
+});
+
+test('streak counts consecutive days including today', function () {
+    $user = User::factory()->withProfile()->create();
+    Meal::factory()->for($user)->create(['eaten_at' => now()]);
+    Meal::factory()->for($user)->create(['eaten_at' => now()->subDay()]);
+    Meal::factory()->for($user)->create(['eaten_at' => now()->subDays(2)]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->where('streak', 3));
+});
+
+test('streak breaks on a gap day', function () {
+    $user = User::factory()->withProfile()->create();
+    Meal::factory()->for($user)->create(['eaten_at' => now()]);
+    // gap: no meal yesterday
+    Meal::factory()->for($user)->create(['eaten_at' => now()->subDays(2)]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->where('streak', 1));
+});
+
+test('streak counts from yesterday when no meal today', function () {
+    $user = User::factory()->withProfile()->create();
+    Meal::factory()->for($user)->create(['eaten_at' => now()->subDay()]);
+    Meal::factory()->for($user)->create(['eaten_at' => now()->subDays(2)]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->where('streak', 2));
+});

@@ -16,7 +16,7 @@ return [
     'default' => 'anthropic',
     'default_for_images' => 'anthropic',
     'default_for_audio' => 'anthropic',
-    'default_for_transcription' => 'anthropic',
+    'default_for_transcription' => 'openai',
     'default_for_embeddings' => 'anthropic',
     'default_for_reranking' => 'gemini',
 

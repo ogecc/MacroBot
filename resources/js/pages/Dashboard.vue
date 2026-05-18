@@ -7,14 +7,14 @@ import { store as mealStore, destroy as mealDestroy } from '@/actions/App/Http/C
 import { store as analyzeRoute } from '@/actions/App/Http/Controllers/MealAnalysisController';
 import { store as activityStore, destroy as activityDestroy } from '@/actions/App/Http/Controllers/ActivityController';
 import { store as analyzeActivityRoute } from '@/actions/App/Http/Controllers/ActivityAnalysisController';
+import { store as transcribeRoute } from '@/actions/App/Http/Controllers/VoiceTranscriptionController';
 import { edit as fitnessProfileEdit, updateWeight, updateGoalAdjustment } from '@/actions/App/Http/Controllers/FitnessProfileController';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import DialogScrollContent from '@/components/ui/dialog/DialogScrollContent.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
-import { ArrowUp, Camera, Plus, Minus, UtensilsCrossed, Dumbbell, ChevronDown, ChevronRight, Loader2, Trash2, Flame, Scale, History, Zap } from 'lucide-vue-next';
+import { ArrowUp, Camera, Mic, MicOff, Plus, Minus, UtensilsCrossed, Dumbbell, ChevronDown, ChevronRight, Loader2, Trash2, Flame, Scale, History, Zap } from 'lucide-vue-next';
 
 const { t } = useI18n();
 
@@ -84,6 +84,8 @@ const props = defineProps<{
     targetWeight: number | null;
     todayActivities: ActivityLog[];
     todayActivityCalories: number;
+    voiceEnabled: boolean;
+    streak: number;
 }>();
 
 // ── Today date label ─────────────────────────────────────────────────────────
@@ -175,7 +177,12 @@ const ringStyle = computed(() => ({
     background: `conic-gradient(${ringColor.value} ${caloriePercent.value}%, #e5e7eb ${caloriePercent.value}% 100%)`,
 }));
 // ── Weight progress ───────────────────────────────────────────────────────────
-const weightAtGoal = computed(() => props.targetWeight !== null && Math.abs(props.currentWeight - props.targetWeight) < 0.1);
+const weightAtGoal = computed(() => {
+    if (!props.targetWeight) return false;
+    if (props.goal === 'gain') return props.currentWeight >= props.targetWeight;
+    if (props.goal === 'lose') return props.currentWeight <= props.targetWeight;
+    return false;
+});
 const weightPercent = computed(() => {
     if (props.goal === 'maintain' || !props.targetWeight) return 0;
     if (weightAtGoal.value) return 100;
@@ -213,6 +220,67 @@ async function adjustWeight(delta: number) {
         router.reload({ only: ['currentWeight', 'dailyCalorieGoal'] });
     } finally {
         weightSaving.value = false;
+    }
+}
+
+// ── Voice recording ───────────────────────────────────────────────────────────
+const recording = ref(false);
+const transcribing = ref(false);
+const mediaRecorderRef = ref<MediaRecorder | null>(null);
+const audioChunks = ref<Blob[]>([]);
+
+async function startRecording(target: 'meal' | 'activity') {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        audioChunks.value = [];
+
+        recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.value.push(e.data);
+        };
+
+        recorder.onstop = async () => {
+            stream.getTracks().forEach((t) => t.stop());
+            const blob = new Blob(audioChunks.value, { type: recorder.mimeType });
+            await transcribeAudio(blob, target);
+        };
+
+        mediaRecorderRef.value = recorder;
+        recorder.start();
+        recording.value = true;
+    } catch {
+        // Microphone access denied or not available — silently fail
+    }
+}
+
+function stopRecording() {
+    mediaRecorderRef.value?.stop();
+    mediaRecorderRef.value = null;
+    recording.value = false;
+}
+
+async function transcribeAudio(blob: Blob, target: 'meal' | 'activity') {
+    transcribing.value = true;
+
+    const ext = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const file = new File([blob], `audio.${ext}`, { type: blob.type });
+    const data = new FormData();
+    data.append('audio', file);
+
+    try {
+        const res = await fetch(transcribeRoute.url(), {
+            method: 'POST',
+            headers: { 'X-XSRF-TOKEN': getCsrf(), Accept: 'application/json' },
+            body: data,
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (target === 'meal') mealDescription.value = json.text;
+        else activityDescription.value = json.text;
+    } catch {
+        // Network error — silently fail, user can retry
+    } finally {
+        transcribing.value = false;
     }
 }
 
@@ -260,7 +328,7 @@ async function analyzeMeal() {
         }
         const json = await res.json();
         mealForm.items = json.items;
-        mealForm.name = json.meal_name_suggestion ?? mealForm.name;
+        mealForm.name = '';
         reviewOpen.value = true;
     } catch {
         analyzeError.value = t('dashboard.network_error');
@@ -295,6 +363,16 @@ function submitMeal() {
             mealForm.reset();
         },
     });
+}
+
+// ── Tracker tab switcher ──────────────────────────────────────────────────────
+const activeTracker = ref<'meal' | 'activity'>('meal');
+const slideDirection = ref<'right' | 'left'>('right');
+
+function switchTracker(tab: 'meal' | 'activity') {
+    if (tab === activeTracker.value) return;
+    slideDirection.value = tab === 'activity' ? 'right' : 'left';
+    activeTracker.value = tab;
 }
 
 // ── AI Activity chat input ────────────────────────────────────────────────────
@@ -424,302 +502,343 @@ async function deleteMeal(mealId: number) {
 
     <div class="flex flex-col gap-4 p-4">
 
-        <!-- ── AI Meal Logger hero ── -->
-        <div class="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 shadow-sm">
-            <!-- Decorative glow blob -->
-            <div class="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+        <!-- ── Unified AI Tracker ── -->
+        <div
+            class="relative overflow-hidden rounded-2xl p-5 shadow-sm transition-colors duration-300"
+            :class="activeTracker === 'meal'
+                ? 'border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent'
+                : 'border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent'"
+        >
+            <div
+                class="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full blur-2xl transition-colors duration-300"
+                :class="activeTracker === 'meal' ? 'bg-primary/10' : 'bg-blue-500/10'"
+            />
 
             <div class="relative space-y-3">
-                <div class="flex items-center gap-2">
-                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20">
-                        <UtensilsCrossed class="h-3.5 w-3.5 text-primary" />
-                    </div>
-                    <span class="text-xs font-semibold uppercase tracking-widest text-primary/80">{{ $t('dashboard.ai_tracker_label') }}</span>
+                <!-- Tab switcher -->
+                <div class="flex rounded-xl bg-background/60 p-0.5 backdrop-blur-sm">
+                    <button
+                        type="button"
+                        class="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] py-1.5 text-xs font-semibold transition-all duration-200"
+                        :class="activeTracker === 'meal' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                        @click="switchTracker('meal')"
+                    >
+                        <UtensilsCrossed class="h-3.5 w-3.5" />
+                        {{ $t('dashboard.ai_tracker_label') }}
+                    </button>
+                    <button
+                        type="button"
+                        class="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] py-1.5 text-xs font-semibold transition-all duration-200"
+                        :class="activeTracker === 'activity' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                        @click="switchTracker('activity')"
+                    >
+                        <Dumbbell class="h-3.5 w-3.5" />
+                        {{ $t('dashboard.ai_activity_label') }}
+                    </button>
                 </div>
 
-                <div>
-                    <h2 class="text-xl font-bold leading-tight">{{ $t('dashboard.what_did_you_eat') }}</h2>
-                    <p class="mt-0.5 text-sm text-muted-foreground">{{ $t('dashboard.ai_description') }}</p>
+                <!-- Animated content panels -->
+                <div class="overflow-hidden">
+                    <Transition :name="'tracker-slide-' + slideDirection" mode="out-in">
+                        <!-- Meal panel -->
+                        <div v-if="activeTracker === 'meal'" key="meal" class="space-y-3">
+                            <div>
+                                <h2 class="text-xl font-bold leading-tight">{{ $t('dashboard.what_did_you_eat') }}</h2>
+                                <p class="mt-0.5 text-sm text-muted-foreground">{{ $t('dashboard.ai_description') }}</p>
+                            </div>
+
+                            <div class="rounded-xl border border-border/60 bg-background/80 shadow-inner backdrop-blur-sm transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+                                <textarea
+                                    v-model="mealDescription"
+                                    rows="2"
+                                    :placeholder="$t('dashboard.describe_placeholder')"
+                                    class="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm leading-relaxed placeholder:text-muted-foreground/60 focus:outline-none"
+                                    style="field-sizing: content; max-height: 140px;"
+                                    @keydown.enter.exact.prevent="analyzeMeal"
+                                />
+                                <div class="flex items-center justify-between gap-2 border-t border-border/40 px-3 py-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <label class="flex cursor-pointer items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-primary">
+                                            <Camera class="h-3.5 w-3.5" />
+                                            <span>{{ mealImageFile ? mealImageFile.name : $t('dashboard.add_photo') }}</span>
+                                            <button v-if="mealImageFile" type="button" class="ml-0.5 text-destructive" @click.prevent="mealImageFile = null">✕</button>
+                                            <input ref="fileInputRef" type="file" accept="image/*" class="sr-only" @change="onImageChange" />
+                                        </label>
+                                        <button
+                                            v-if="voiceEnabled"
+                                            type="button"
+                                            class="flex h-7 w-7 items-center justify-center rounded-full border transition"
+                                            :class="recording ? 'border-red-500 bg-red-500/10 text-red-500 animate-pulse' : 'border-border/60 bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-primary'"
+                                            :disabled="transcribing"
+                                            @click="recording ? stopRecording() : startRecording('meal')"
+                                        >
+                                            <Loader2 v-if="transcribing" class="h-3.5 w-3.5 animate-spin" />
+                                            <MicOff v-else-if="recording" class="h-3.5 w-3.5" />
+                                            <Mic v-else class="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                    <button
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+                                        :disabled="analyzing"
+                                        @click="analyzeMeal"
+                                    >
+                                        <Loader2 v-if="analyzing" class="h-4 w-4 animate-spin" />
+                                        <ArrowUp v-else class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <p v-if="analyzeError" class="px-1 text-xs text-destructive">{{ analyzeError }}</p>
+                        </div>
+
+                        <!-- Activity panel -->
+                        <div v-else key="activity" class="space-y-3">
+                            <div>
+                                <h2 class="text-xl font-bold leading-tight">{{ $t('dashboard.what_did_you_do') }}</h2>
+                                <p class="mt-0.5 text-sm text-muted-foreground">{{ $t('dashboard.activity_ai_description') }}</p>
+                            </div>
+
+                            <div class="rounded-xl border border-border/60 bg-background/80 shadow-inner backdrop-blur-sm transition focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20">
+                                <textarea
+                                    v-model="activityDescription"
+                                    rows="2"
+                                    :placeholder="$t('dashboard.describe_activity_placeholder')"
+                                    class="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm leading-relaxed placeholder:text-muted-foreground/60 focus:outline-none"
+                                    style="field-sizing: content; max-height: 140px;"
+                                    @keydown.enter.exact.prevent="analyzeActivity"
+                                />
+                                <div class="flex items-center justify-end gap-2 border-t border-border/40 px-3 py-2">
+                                    <button
+                                        v-if="voiceEnabled"
+                                        type="button"
+                                        class="flex h-7 w-7 items-center justify-center rounded-full border transition"
+                                        :class="recording ? 'border-red-500 bg-red-500/10 text-red-500 animate-pulse' : 'border-border/60 bg-muted/40 text-muted-foreground hover:border-blue-500/40 hover:text-blue-500'"
+                                        :disabled="transcribing"
+                                        @click="recording ? stopRecording() : startRecording('activity')"
+                                    >
+                                        <Loader2 v-if="transcribing" class="h-3.5 w-3.5 animate-spin" />
+                                        <MicOff v-else-if="recording" class="h-3.5 w-3.5" />
+                                        <Mic v-else class="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white shadow transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+                                        :disabled="analyzingActivity"
+                                        @click="analyzeActivity"
+                                    >
+                                        <Loader2 v-if="analyzingActivity" class="h-4 w-4 animate-spin" />
+                                        <ArrowUp v-else class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <p v-if="activityAnalyzeError" class="px-1 text-xs text-destructive">{{ activityAnalyzeError }}</p>
+
+                            <!-- Today's activities list -->
+                            <div v-if="todayActivities.length > 0" class="space-y-1.5">
+                                <div
+                                    v-for="activity in todayActivities"
+                                    :key="activity.id"
+                                    class="flex items-center gap-3 rounded-lg border border-border/40 bg-background/60 px-3 py-2"
+                                >
+                                    <div
+                                        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+                                        :class="{
+                                            'bg-green-500/10': activity.intensity === 'light',
+                                            'bg-orange-500/10': activity.intensity === 'moderate',
+                                            'bg-red-500/10': activity.intensity === 'vigorous',
+                                        }"
+                                    >
+                                        <Zap
+                                            class="h-3.5 w-3.5"
+                                            :class="{
+                                                'text-green-500': activity.intensity === 'light',
+                                                'text-orange-500': activity.intensity === 'moderate',
+                                                'text-red-500': activity.intensity === 'vigorous',
+                                            }"
+                                        />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium truncate">{{ activity.name }}</p>
+                                        <p class="text-[10px] text-muted-foreground">{{ activity.duration_min }} min · {{ activity.intensity }}</p>
+                                    </div>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <span class="text-sm font-semibold text-green-600">+{{ activity.calories_burned }}</span>
+                                        <button
+                                            type="button"
+                                            class="rounded p-1 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                                            :disabled="deletingActivityId === activity.id"
+                                            @click="deleteActivity(activity.id)"
+                                        >
+                                            <Loader2 v-if="deletingActivityId === activity.id" class="h-3.5 w-3.5 animate-spin" />
+                                            <Trash2 v-else class="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <p v-else class="text-xs text-muted-foreground/70 italic">{{ $t('dashboard.no_activities_today') }}</p>
+                        </div>
+                    </Transition>
                 </div>
-
-                <!-- Input box -->
-                <div class="rounded-xl border border-border/60 bg-background/80 shadow-inner backdrop-blur-sm transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
-                    <!-- Textarea -->
-                    <textarea
-                        v-model="mealDescription"
-                        rows="2"
-                        :placeholder="$t('dashboard.describe_placeholder')"
-                        class="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm leading-relaxed placeholder:text-muted-foreground/60 focus:outline-none"
-                        style="field-sizing: content; max-height: 140px;"
-                        @keydown.enter.exact.prevent="analyzeMeal"
-                    />
-
-                    <!-- Bottom bar: photo chip + send -->
-                    <div class="flex items-center justify-between gap-2 border-t border-border/40 px-3 py-2">
-                        <!-- Camera / attachment -->
-                        <label class="flex cursor-pointer items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-primary">
-                            <Camera class="h-3.5 w-3.5" />
-                            <span>{{ mealImageFile ? mealImageFile.name : $t('dashboard.add_photo') }}</span>
-                            <button v-if="mealImageFile" type="button" class="ml-0.5 text-destructive" @click.prevent="mealImageFile = null">✕</button>
-                            <input ref="fileInputRef" type="file" accept="image/*" class="sr-only" @change="onImageChange" />
-                        </label>
-
-                        <button
-                            class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition hover:opacity-90 active:scale-95 disabled:opacity-50"
-                            :disabled="analyzing"
-                            @click="analyzeMeal"
-                        >
-                            <Loader2 v-if="analyzing" class="h-4 w-4 animate-spin" />
-                            <ArrowUp v-else class="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-                <p v-if="analyzeError" class="mt-1.5 px-1 text-xs text-destructive">{{ analyzeError }}</p>
             </div>
         </div>
 
         <!-- ── Today header ── -->
-        <div class="flex items-center justify-between px-1">
+        <div class="flex items-center justify-between px-1 -mt-1">
             <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{{ $t('dashboard.today') }}</p>
-            <p v-if="todayLabel" class="text-xs text-muted-foreground">{{ todayLabel }}</p>
+            <div class="flex items-center gap-2">
+                <div v-if="streak > 0" class="flex items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5">
+                    <Flame class="h-3 w-3 text-orange-500" />
+                    <span class="text-[10px] font-semibold text-orange-500">{{ streak }} {{ streak === 1 ? 'day' : 'days' }}</span>
+                </div>
+                <p v-if="todayLabel" class="text-xs text-muted-foreground">{{ todayLabel }}</p>
+            </div>
         </div>
 
         <!-- ── Two stat cards ── -->
         <div class="grid grid-cols-2 gap-3">
             <!-- Calorie card -->
-            <Card>
-                <CardContent class="flex flex-col items-center pt-3 pb-4 px-3">
-                    <!-- Header -->
-                    <div class="flex w-full items-center gap-1.5 mb-3">
-                        <div class="flex h-6 w-6 items-center justify-center rounded-md bg-rose-500/10">
-                            <Flame class="h-3.5 w-3.5 text-rose-500" />
-                        </div>
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Calories</span>
+            <div class="flex flex-col items-center rounded-2xl border border-rose-500/25 bg-gradient-to-b from-rose-500/10 to-transparent p-3 shadow-sm">
+                <!-- Header -->
+                <div class="flex w-full items-center gap-1.5 mb-3">
+                    <div class="flex h-6 w-6 items-center justify-center rounded-md bg-rose-500/20">
+                        <Flame class="h-3.5 w-3.5 text-rose-400" />
                     </div>
+                    <span class="text-[11px] font-semibold uppercase tracking-wide text-rose-400/80">Calories</span>
+                </div>
 
-                    <!-- Ring -->
-                    <div class="relative">
-                        <div class="h-28 w-28 rounded-full" :style="ringStyle" />
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <div class="h-20 w-20 rounded-full bg-background" />
-                        </div>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="text-base font-bold leading-none">{{ Math.round(todayTotals.calories) }}</span>
-                            <span class="text-[10px] text-muted-foreground">kcal</span>
-                        </div>
+                <!-- Ring -->
+                <div class="relative">
+                    <div class="h-28 w-28 rounded-full" :style="ringStyle" />
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="h-20 w-20 rounded-full bg-background" />
                     </div>
-
-                    <p class="mt-2 text-[10px] text-muted-foreground">{{ $t('dashboard.goal_kcal', { n: adjustedGoal }) }}</p>
-                    <p
-                        class="text-[10px] font-medium mt-0.5"
-                        :class="{
-                            'text-green-500': calorieStatus === 'good',
-                            'text-yellow-500': calorieStatus === 'warning',
-                            'text-red-500': calorieStatus === 'danger',
-                        }"
-                    >
-                        <template v-if="calorieStatus === 'good'">
-                            {{ goal === 'lose' ? `✓ ${Math.abs(calorieOverage)} kcal deficit` : `${Math.abs(calorieOverage)} kcal left` }}
-                        </template>
-                        <template v-else-if="calorieStatus === 'warning'">⚠️ {{ calorieOverage }} kcal over</template>
-                        <template v-else>🚨 {{ calorieOverage }} kcal over</template>
-                    </p>
-                    <p v-if="todayActivityCalories > 0" class="mt-0.5 text-[10px] font-medium text-green-600">
-                        +{{ todayActivityCalories }} kcal activity
-                    </p>
-
-                    <!-- Macro mini bars -->
-                    <div class="mt-3 w-full space-y-1.5">
-                        <div v-for="macro in macros" :key="macro.label" class="flex items-center gap-1.5">
-                            <span class="w-8 text-[10px] text-muted-foreground">{{ macro.label.slice(0, 4) }}</span>
-                            <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                                <div class="h-full rounded-full" :class="macro.color" :style="{ width: `${Math.min(100, (macro.value / macro.max) * 100)}%` }" />
-                            </div>
-                            <span class="w-7 text-right text-[10px] font-medium tabular-nums">{{ Math.round(macro.value) }}g</span>
-                        </div>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-lg font-bold leading-none tabular-nums">{{ Math.round(todayTotals.calories) }}</span>
+                        <span class="text-[10px] text-muted-foreground">kcal</span>
                     </div>
+                </div>
 
-                    <!-- Goal badge -->
-                    <button
-                        v-if="currentOption"
-                        type="button"
-                        class="mt-2.5 flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium transition hover:bg-muted/60"
-                        :class="goalBadgeColor"
-                        @click="openAdjustmentModal"
-                    >
-                        {{ currentOption.tag }}
-                        <span class="opacity-50">✎</span>
-                    </button>
-                </CardContent>
-            </Card>
+                <p class="mt-2 text-[10px] text-muted-foreground">{{ $t('dashboard.goal_kcal', { n: adjustedGoal }) }}</p>
+                <p
+                    class="text-[10px] font-semibold mt-0.5"
+                    :class="{
+                        'text-green-400': calorieStatus === 'good',
+                        'text-yellow-400': calorieStatus === 'warning',
+                        'text-red-400': calorieStatus === 'danger',
+                    }"
+                >
+                    <template v-if="calorieStatus === 'good'">
+                        {{ goal === 'lose' ? `✓ ${Math.abs(calorieOverage)} kcal deficit` : `${Math.abs(calorieOverage)} kcal left` }}
+                    </template>
+                    <template v-else-if="calorieStatus === 'warning'">⚠️ {{ calorieOverage }} kcal over</template>
+                    <template v-else>🚨 {{ calorieOverage }} kcal over</template>
+                </p>
+                <p v-if="todayActivityCalories > 0" class="mt-0.5 text-[10px] font-semibold text-emerald-400">
+                    +{{ todayActivityCalories }} kcal activity
+                </p>
+
+                <!-- Macro mini bars -->
+                <div class="mt-3 w-full space-y-1.5">
+                    <div v-for="macro in macros" :key="macro.label" class="flex items-center gap-1.5">
+                        <span class="w-8 text-[10px] text-muted-foreground">{{ macro.label.slice(0, 4) }}</span>
+                        <div class="h-2 flex-1 overflow-hidden rounded-full bg-white/5">
+                            <div class="h-full rounded-full" :class="macro.color" :style="{ width: `${Math.min(100, (macro.value / macro.max) * 100)}%` }" />
+                        </div>
+                        <span class="w-7 text-right text-[10px] font-medium tabular-nums">{{ Math.round(macro.value) }}g</span>
+                    </div>
+                </div>
+
+                <!-- Goal badge -->
+                <button
+                    v-if="currentOption"
+                    type="button"
+                    class="mt-2.5 flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium transition hover:bg-white/5"
+                    :class="goalBadgeColor"
+                    @click="openAdjustmentModal"
+                >
+                    {{ currentOption.tag }}
+                    <span class="opacity-50">✎</span>
+                </button>
+            </div>
 
             <!-- Weight card -->
-            <Card>
-                <CardContent class="flex flex-col pt-3 pb-4 px-3 h-full">
-                    <!-- Header -->
-                    <div class="flex w-full items-center gap-1.5 mb-3">
-                        <div class="flex h-6 w-6 items-center justify-center rounded-md bg-green-500/10">
-                            <Scale class="h-3.5 w-3.5 text-green-500" />
-                        </div>
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Weight</span>
+            <div class="flex flex-col rounded-2xl border border-emerald-500/25 bg-gradient-to-b from-emerald-500/10 to-transparent p-3 shadow-sm">
+                <!-- Header -->
+                <div class="flex w-full items-center gap-1.5 mb-3">
+                    <div class="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-500/20">
+                        <Scale class="h-3.5 w-3.5 text-emerald-400" />
                     </div>
-
-                    <!-- Current weight -->
-                    <div class="flex items-end justify-center gap-1 mb-3">
-                        <span class="text-3xl font-bold tabular-nums leading-none">{{ currentWeight.toFixed(1) }}</span>
-                        <span class="text-sm text-muted-foreground mb-0.5">kg</span>
-                    </div>
-
-                    <!-- MAINTAIN -->
-                    <template v-if="goal === 'maintain'">
-                        <div class="flex flex-col items-center gap-1.5 flex-1 justify-center">
-                            <div class="flex items-center gap-1.5">
-                                <div class="h-px w-5 bg-muted-foreground/30 rounded-full" />
-                                <div class="h-px w-5 bg-muted-foreground/30 rounded-full" />
-                                <div class="h-px w-5 bg-muted-foreground/30 rounded-full" />
-                            </div>
-                            <p class="text-[11px] font-medium text-muted-foreground">Maintaining</p>
-                        </div>
-                    </template>
-
-                    <!-- GAIN / LOSE with target -->
-                    <template v-else-if="targetWeight">
-                        <div class="flex-1 flex flex-col justify-center gap-2">
-                            <div class="flex justify-between">
-                                <div class="text-center">
-                                    <p class="text-[10px] text-muted-foreground">Start</p>
-                                    <p class="text-[11px] font-semibold tabular-nums">{{ startWeight.toFixed(1) }}</p>
-                                </div>
-                                <div class="text-center">
-                                    <p class="text-[10px] text-muted-foreground">Goal</p>
-                                    <p class="text-[11px] font-semibold tabular-nums" :class="weightAtGoal ? 'text-green-500' : ''">{{ targetWeight.toFixed(1) }}</p>
-                                </div>
-                            </div>
-                            <div class="h-2 rounded-full bg-muted overflow-hidden">
-                                <div
-                                    class="h-full rounded-full transition-all duration-500"
-                                    :class="weightAtGoal ? 'bg-green-500' : 'bg-primary'"
-                                    :style="{ width: weightPercent + '%' }"
-                                />
-                            </div>
-                            <p class="text-center text-[10px] font-medium" :class="weightAtGoal ? 'text-green-500' : 'text-muted-foreground'">
-                                {{ weightAtGoal ? '🎉 Goal reached!' : `${weightPercent}% · ${Math.abs(currentWeight - targetWeight).toFixed(1)} kg to go` }}
-                            </p>
-                        </div>
-                    </template>
-
-                    <!-- No target -->
-                    <template v-else>
-                        <p class="flex-1 flex items-center justify-center text-center text-[10px] text-muted-foreground leading-relaxed">
-                            Set a target weight in Fitness Profile
-                        </p>
-                    </template>
-
-                    <!-- +/- buttons -->
-                    <div class="mt-3 flex items-center justify-center gap-2">
-                        <button
-                            class="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background transition hover:bg-muted disabled:opacity-40"
-                            :disabled="weightSaving"
-                            @click="adjustWeight(-0.1)"
-                        ><Minus class="h-3 w-3" /></button>
-                        <span class="text-[10px] tabular-nums text-muted-foreground select-none">{{ currentWeight.toFixed(1) }} kg</span>
-                        <button
-                            class="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background transition hover:bg-muted disabled:opacity-40"
-                            :disabled="weightSaving"
-                            @click="adjustWeight(0.1)"
-                        ><Plus class="h-3 w-3" /></button>
-                    </div>
-
-                    <Link
-                        :href="fitnessProfileEdit.url()"
-                        class="mt-2 w-full text-center text-[10px] text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors"
-                    >Change goal or plan</Link>
-                </CardContent>
-            </Card>
-        </div>
-
-        <!-- ── AI Activity Logger ── -->
-        <div class="relative overflow-hidden rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent p-5 shadow-sm">
-            <div class="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-blue-500/10 blur-2xl" />
-
-            <div class="relative space-y-3">
-                <div class="flex items-center gap-2">
-                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/20">
-                        <Dumbbell class="h-3.5 w-3.5 text-blue-600" />
-                    </div>
-                    <span class="text-xs font-semibold uppercase tracking-widest text-blue-600/80">{{ $t('dashboard.ai_activity_label') }}</span>
+                    <span class="text-[11px] font-semibold uppercase tracking-wide text-emerald-400/80">Weight</span>
                 </div>
 
-                <div>
-                    <h2 class="text-xl font-bold leading-tight">{{ $t('dashboard.what_did_you_do') }}</h2>
-                    <p class="mt-0.5 text-sm text-muted-foreground">{{ $t('dashboard.activity_ai_description') }}</p>
+                <!-- Current weight -->
+                <div class="flex items-end justify-center gap-1.5 mb-3">
+                    <span class="text-5xl font-bold tabular-nums leading-none">{{ currentWeight.toFixed(1) }}</span>
+                    <span class="text-base text-muted-foreground mb-1">kg</span>
                 </div>
 
-                <div class="rounded-xl border border-border/60 bg-background/80 shadow-inner backdrop-blur-sm transition focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20">
-                    <textarea
-                        v-model="activityDescription"
-                        rows="2"
-                        :placeholder="$t('dashboard.describe_activity_placeholder')"
-                        class="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm leading-relaxed placeholder:text-muted-foreground/60 focus:outline-none"
-                        style="field-sizing: content; max-height: 140px;"
-                        @keydown.enter.exact.prevent="analyzeActivity"
-                    />
-                    <div class="flex items-center justify-end gap-2 border-t border-border/40 px-3 py-2">
-                        <button
-                            class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white shadow transition hover:opacity-90 active:scale-95 disabled:opacity-50"
-                            :disabled="analyzingActivity"
-                            @click="analyzeActivity"
-                        >
-                            <Loader2 v-if="analyzingActivity" class="h-4 w-4 animate-spin" />
-                            <ArrowUp v-else class="h-4 w-4" />
-                        </button>
+                <!-- MAINTAIN -->
+                <template v-if="goal === 'maintain'">
+                    <div class="flex flex-col items-center gap-1.5 flex-1 justify-center">
+                        <div class="flex items-center gap-1.5">
+                            <div class="h-px w-5 bg-muted-foreground/30 rounded-full" />
+                            <div class="h-px w-5 bg-muted-foreground/30 rounded-full" />
+                            <div class="h-px w-5 bg-muted-foreground/30 rounded-full" />
+                        </div>
+                        <p class="text-[11px] font-medium text-muted-foreground">Maintaining</p>
                     </div>
-                </div>
-                <p v-if="activityAnalyzeError" class="mt-1.5 px-1 text-xs text-destructive">{{ activityAnalyzeError }}</p>
+                </template>
 
-                <!-- Today's activities list -->
-                <div v-if="todayActivities.length > 0" class="space-y-1.5">
-                    <div
-                        v-for="activity in todayActivities"
-                        :key="activity.id"
-                        class="flex items-center gap-3 rounded-lg border border-border/40 bg-background/60 px-3 py-2"
-                    >
-                        <div
-                            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-                            :class="{
-                                'bg-green-500/10': activity.intensity === 'light',
-                                'bg-orange-500/10': activity.intensity === 'moderate',
-                                'bg-red-500/10': activity.intensity === 'vigorous',
-                            }"
-                        >
-                            <Zap
-                                class="h-3.5 w-3.5"
-                                :class="{
-                                    'text-green-500': activity.intensity === 'light',
-                                    'text-orange-500': activity.intensity === 'moderate',
-                                    'text-red-500': activity.intensity === 'vigorous',
-                                }"
+                <!-- GAIN / LOSE with target -->
+                <template v-else-if="targetWeight">
+                    <div class="flex-1 flex flex-col justify-center gap-2">
+                        <div class="flex justify-between">
+                            <div class="text-center">
+                                <p class="text-[10px] text-muted-foreground">Start</p>
+                                <p class="text-[11px] font-semibold tabular-nums">{{ startWeight.toFixed(1) }}</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-[10px] text-muted-foreground">Goal</p>
+                                <p class="text-[11px] font-semibold tabular-nums" :class="weightAtGoal ? 'text-emerald-400' : ''">{{ targetWeight.toFixed(1) }}</p>
+                            </div>
+                        </div>
+                        <div class="h-2 rounded-full bg-white/5 overflow-hidden">
+                            <div
+                                class="h-full rounded-full transition-all duration-500"
+                                :class="weightAtGoal ? 'bg-emerald-400' : 'bg-emerald-500'"
+                                :style="{ width: weightPercent + '%' }"
                             />
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium truncate">{{ activity.name }}</p>
-                            <p class="text-[10px] text-muted-foreground">{{ activity.duration_min }} min · {{ activity.intensity }}</p>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <span class="text-sm font-semibold text-green-600">+{{ activity.calories_burned }}</span>
-                            <button
-                                type="button"
-                                class="rounded p-1 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                                :disabled="deletingActivityId === activity.id"
-                                @click="deleteActivity(activity.id)"
-                            >
-                                <Loader2 v-if="deletingActivityId === activity.id" class="h-3.5 w-3.5 animate-spin" />
-                                <Trash2 v-else class="h-3.5 w-3.5" />
-                            </button>
-                        </div>
+                        <p class="text-center text-[10px] font-semibold" :class="weightAtGoal ? 'text-emerald-400' : 'text-muted-foreground'">
+                            {{ weightAtGoal ? '🎉 Goal reached!' : `${weightPercent}% · ${Math.abs(currentWeight - targetWeight).toFixed(1)} kg to go` }}
+                        </p>
                     </div>
+                </template>
+
+                <!-- No target -->
+                <template v-else>
+                    <p class="flex-1 flex items-center justify-center text-center text-[10px] text-muted-foreground leading-relaxed">
+                        Set a target weight in Fitness Profile
+                    </p>
+                </template>
+
+                <!-- +/- buttons -->
+                <div class="mt-2 flex items-center justify-center gap-2">
+                    <button
+                        class="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/5 transition hover:bg-white/10 disabled:opacity-40"
+                        :disabled="weightSaving"
+                        @click="adjustWeight(-0.1)"
+                    ><Minus class="h-3 w-3" /></button>
+                    <span class="text-[10px] tabular-nums text-muted-foreground select-none">{{ currentWeight.toFixed(1) }} kg</span>
+                    <button
+                        class="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/5 transition hover:bg-white/10 disabled:opacity-40"
+                        :disabled="weightSaving"
+                        @click="adjustWeight(0.1)"
+                    ><Plus class="h-3 w-3" /></button>
                 </div>
-                <p v-else class="text-xs text-muted-foreground/70 italic">{{ $t('dashboard.no_activities_today') }}</p>
+
+                <Link
+                    :href="fitnessProfileEdit.url()"
+                    class="mt-3 mb-1 w-full text-center text-[10px] text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors block"
+                >Change goal or plan</Link>
             </div>
         </div>
 
@@ -955,3 +1074,33 @@ async function deleteMeal(mealId: number) {
         </Dialog>
     </div>
 </template>
+
+<style scoped>
+/* Slide right (meal → activity) */
+.tracker-slide-right-enter-active,
+.tracker-slide-right-leave-active {
+    transition: all 0.22s ease;
+}
+.tracker-slide-right-enter-from {
+    opacity: 0;
+    transform: translateX(24px);
+}
+.tracker-slide-right-leave-to {
+    opacity: 0;
+    transform: translateX(-24px);
+}
+
+/* Slide left (activity → meal) */
+.tracker-slide-left-enter-active,
+.tracker-slide-left-leave-active {
+    transition: all 0.22s ease;
+}
+.tracker-slide-left-enter-from {
+    opacity: 0;
+    transform: translateX(-24px);
+}
+.tracker-slide-left-leave-to {
+    opacity: 0;
+    transform: translateX(24px);
+}
+</style>
