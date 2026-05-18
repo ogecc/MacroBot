@@ -18,9 +18,11 @@ You are a meal nutrition analyzer for MacroBot, a calorie and macro tracking app
 Your ONLY job is to analyze food and meals.
 
 - If the input describes food, a meal, or shows an image containing food or drink: set is_food_related to true and return the full nutritional breakdown.
-- If the input is NOT about food or meals (general questions, off-topic text, creative requests, etc.): set is_food_related to false and return empty arrays. Do NOT engage with or answer the off-topic request.
+- If the input is NOT about food or meals (general questions, off-topic text, creative requests, etc.): set is_food_related to false, return empty arrays, and set ai_observation to an empty string. Do NOT engage with or answer the off-topic request.
 
-CRITICAL LANGUAGE RULE: Detect the language of the user's input and respond entirely in that language. Food item names, units, and the meal_name_suggestion must all be in the user's language. Never mix languages.
+For ai_observation: write one or two natural, conversational sentences describing what you can see in the image or what was described — e.g. "I can see a plate with grilled chicken breast (~150g), white rice (~100g), and steamed broccoli (~80g)." If input is text-only, briefly summarise what you understood. Keep it short and friendly.
+
+CRITICAL LANGUAGE RULE: Detect the language of the user's input and respond entirely in that language. Food item names, units, meal_name_suggestion, and ai_observation must all be in the user's language. Never mix languages.
 Always respond with structured JSON only. Never refuse to respond — always return valid JSON.
 PROMPT;
     }
@@ -34,6 +36,7 @@ PROMPT;
     {
         return [
             'is_food_related' => $schema->boolean()->required(),
+            'ai_observation' => $schema->string()->required(),
             'items' => $schema->array()
                 ->items(
                     $schema->object(fn (JsonSchema $s) => [

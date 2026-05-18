@@ -285,6 +285,10 @@ async function transcribeAudio(blob: Blob, target: 'meal' | 'activity') {
 }
 
 // ── AI Meal chat input ────────────────────────────────────────────────────────
+const aiReviewOpen = ref(false);
+const aiObservation = ref('');
+const aiAddition = ref('');
+const reanalyzing = ref(false);
 const reviewOpen = ref(false);
 const mealDescription = ref('');
 const mealImageFile = ref<File | null>(null);
@@ -329,12 +333,51 @@ async function analyzeMeal() {
         const json = await res.json();
         mealForm.items = json.items;
         mealForm.name = '';
-        reviewOpen.value = true;
+        aiObservation.value = json.ai_observation ?? '';
+        aiAddition.value = '';
+        aiReviewOpen.value = true;
     } catch {
         analyzeError.value = t('dashboard.network_error');
     } finally {
         analyzing.value = false;
     }
+}
+
+async function confirmAiReview() {
+    if (!aiAddition.value.trim()) {
+        aiReviewOpen.value = false;
+        reviewOpen.value = true;
+        return;
+    }
+
+    reanalyzing.value = true;
+    try {
+        const data = new FormData();
+        data.append('description', aiAddition.value);
+        if (mealImageFile.value) data.append('image', mealImageFile.value);
+
+        const res = await fetch(analyzeRoute.url(), {
+            method: 'POST',
+            headers: { 'X-XSRF-TOKEN': getCsrf(), Accept: 'application/json' },
+            body: data,
+        });
+
+        if (res.ok) {
+            const json = await res.json();
+            mealForm.items = json.items;
+        }
+    } finally {
+        reanalyzing.value = false;
+        aiReviewOpen.value = false;
+        reviewOpen.value = true;
+    }
+}
+
+function cancelAiReview() {
+    aiReviewOpen.value = false;
+    aiObservation.value = '';
+    aiAddition.value = '';
+    mealForm.reset();
 }
 
 function getCsrf(): string {
@@ -977,6 +1020,42 @@ async function deleteMeal(mealId: number) {
                     <Button type="button" variant="outline" class="flex-1 h-9" @click="adjustmentModalOpen = false">{{ $t('dashboard.cancel') }}</Button>
                     <Button type="button" class="flex-1 h-9" :disabled="savingAdjustment" @click="saveAdjustment">
                         {{ savingAdjustment ? $t('dashboard.saving') : $t('dashboard.save') }}
+                    </Button>
+                </div>
+            </DialogScrollContent>
+        </Dialog>
+
+        <!-- AI observation modal (Modal 1) -->
+        <Dialog :open="aiReviewOpen" @update:open="(v) => { if (!v) cancelAiReview() }">
+            <DialogScrollContent class="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>{{ $t('dashboard.ai_review_title') }}</DialogTitle>
+                    <DialogDescription>{{ $t('dashboard.ai_review_desc') }}</DialogDescription>
+                </DialogHeader>
+
+                <!-- AI observation -->
+                <div v-if="aiObservation" class="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground">
+                    {{ aiObservation }}
+                </div>
+
+                <!-- User addition -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-muted-foreground">{{ $t('dashboard.ai_review_add_label') }}</label>
+                    <textarea
+                        v-model="aiAddition"
+                        rows="2"
+                        :placeholder="$t('dashboard.ai_review_add_placeholder')"
+                        class="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <Button type="button" variant="outline" class="flex-1 h-9" @click="cancelAiReview">
+                        {{ $t('dashboard.cancel') }}
+                    </Button>
+                    <Button type="button" class="flex-1 h-9" :disabled="reanalyzing" @click="confirmAiReview">
+                        <Loader2 v-if="reanalyzing" class="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        {{ $t('dashboard.ai_review_confirm') }}
                     </Button>
                 </div>
             </DialogScrollContent>

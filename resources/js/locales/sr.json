@@ -80,7 +80,12 @@
     "type_activity_error": "Opiši svoju aktivnost.",
     "activity_analysis_failed": "Analiza aktivnosti nije uspela. Pokušaj ponovo.",
     "no_activities_today": "Nema aktivnosti zabeleženih danas.",
-    "kcal_from_activity": "kcal od aktivnosti"
+    "kcal_from_activity": "kcal od aktivnosti",
+    "ai_review_title": "Evo šta vidim",
+    "ai_review_desc": "Pregledaj analizu VI. Dodaj šta je propustio ili ispravi greške.",
+    "ai_review_add_label": "Ima li nešto za dodati ili ispraviti?",
+    "ai_review_add_placeholder": "npr. pio sam i čašu mleka, to je spanać a ne brokoli",
+    "ai_review_confirm": "Izgleda dobro →"
   },
   "fitness": {
     "title": "Fitnes profil",

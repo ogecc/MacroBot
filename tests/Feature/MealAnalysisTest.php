@@ -23,6 +23,7 @@ test('returns structured json with valid description', function () {
 
     $fakeResponse = [
         'is_food_related' => true,
+        'ai_observation' => 'I can see grilled chicken breast (~150g).',
         'items' => [
             ['name' => 'Chicken breast', 'quantity' => 150, 'unit' => 'g', 'calories' => 247, 'protein_g' => 46.5, 'carbs_g' => 0.0, 'fat_g' => 5.3],
         ],
@@ -34,7 +35,8 @@ test('returns structured json with valid description', function () {
     $this->actingAs($user)
         ->postJson(route('meals.analyze'), ['description' => 'Grilled chicken breast 150g'])
         ->assertOk()
-        ->assertJsonStructure(['items', 'meal_name_suggestion'])
+        ->assertJsonStructure(['ai_observation', 'items', 'meal_name_suggestion'])
+        ->assertJsonPath('ai_observation', 'I can see grilled chicken breast (~150g).')
         ->assertJsonPath('items.0.name', 'Chicken breast');
 });
 
@@ -44,6 +46,7 @@ test('returns structured json with valid image', function () {
 
     $fakeResponse = [
         'is_food_related' => true,
+        'ai_observation' => 'I can see a pizza slice.',
         'items' => [
             ['name' => 'Pizza slice', 'quantity' => 1, 'unit' => 'piece', 'calories' => 285, 'protein_g' => 12.0, 'carbs_g' => 36.0, 'fat_g' => 10.0],
         ],
@@ -65,6 +68,7 @@ test('returns 422 when input is not food related', function () {
 
     MealAnalyzer::fake([[
         'is_food_related' => false,
+        'ai_observation' => '',
         'items' => [],
         'meal_name_suggestion' => '',
     ]]);
@@ -86,7 +90,7 @@ test('returns 422 when description is too short', function () {
 test('returns 422 when ai agent throws an exception', function () {
     $user = User::factory()->withProfile()->create();
 
-    MealAnalyzer::fake(fn () => throw new \Exception('AI failed'));
+    MealAnalyzer::fake(fn () => throw new Exception('AI failed'));
 
     $this->actingAs($user)
         ->postJson(route('meals.analyze'), ['description' => 'Something'])

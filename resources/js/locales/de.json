@@ -80,7 +80,12 @@
     "type_activity_error": "Beschreibe deine Aktivität.",
     "activity_analysis_failed": "Aktivitätsanalyse fehlgeschlagen. Bitte versuche es erneut.",
     "no_activities_today": "Heute keine Aktivitäten erfasst.",
-    "kcal_from_activity": "kcal durch Aktivität"
+    "kcal_from_activity": "kcal durch Aktivität",
+    "ai_review_title": "Das sehe ich",
+    "ai_review_desc": "Überprüfe die KI-Analyse. Ergänze Fehlendes oder korrigiere Fehler.",
+    "ai_review_add_label": "Etwas hinzuzufügen oder zu korrigieren?",
+    "ai_review_add_placeholder": "z. B. dazu ein Glas Milch oder das ist Spinat, kein Brokkoli",
+    "ai_review_confirm": "Sieht gut aus →"
   },
   "fitness": {
     "title": "Fitnessprofil",

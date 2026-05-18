@@ -80,7 +80,12 @@
     "type_activity_error": "Describe tu actividad.",
     "activity_analysis_failed": "Error al analizar la actividad. Inténtalo de nuevo.",
     "no_activities_today": "No hay actividades registradas hoy.",
-    "kcal_from_activity": "kcal de actividad"
+    "kcal_from_activity": "kcal de actividad",
+    "ai_review_title": "Esto es lo que veo",
+    "ai_review_desc": "Revisa el análisis de la IA. Añade lo que falta o corrige errores.",
+    "ai_review_add_label": "¿Algo que añadir o corregir?",
+    "ai_review_add_placeholder": "p. ej. «también bebí un vaso de leche» o «eso es espinaca, no brócoli»",
+    "ai_review_confirm": "Se ve bien →"
   },
   "fitness": {
     "title": "Perfil de Fitness",

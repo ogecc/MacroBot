@@ -80,7 +80,12 @@
     "type_activity_error": "Type a description of your activity.",
     "activity_analysis_failed": "Activity analysis failed. Please try again.",
     "no_activities_today": "No activities logged today.",
-    "kcal_from_activity": "kcal from activity"
+    "kcal_from_activity": "kcal from activity",
+    "ai_review_title": "Here's what I see",
+    "ai_review_desc": "Review the AI's analysis. Add anything it missed or correct any mistakes.",
+    "ai_review_add_label": "Anything to add or correct?",
+    "ai_review_add_placeholder": "e.g. \"also had a glass of milk\" or \"that's spinach, not broccoli\"",
+    "ai_review_confirm": "Looks good →"
   },
   "fitness": {
     "title": "Fitness Profile",
