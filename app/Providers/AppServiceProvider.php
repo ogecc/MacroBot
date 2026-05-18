@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\ActivityLog;
+use App\Models\Recipe;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,10 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Route::bind('activityLog', fn ($value) => ActivityLog::where('id', $value)
+            ->where('user_id', auth()->id())
+            ->firstOrFail());
+
+        Route::bind('recipe', fn ($value) => Recipe::where('id', $value)
             ->where('user_id', auth()->id())
             ->firstOrFail());
     }

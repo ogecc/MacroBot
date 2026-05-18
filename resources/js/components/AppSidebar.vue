@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { LayoutGrid, UserCog } from 'lucide-vue-next';
+import { LayoutGrid, UserCog, ChefHat } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppLogo from '@/components/AppLogo.vue';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { edit as fitnessEdit } from '@/actions/App/Http/Controllers/FitnessProfileController';
+import { index as recipesIndex } from '@/actions/App/Http/Controllers/RecipeController';
 import type { NavItem } from '@/types';
 
 const { t } = useI18n();
@@ -26,6 +27,11 @@ const mainNavItems = computed<NavItem[]>(() => [
         title: t('nav.dashboard'),
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Recipes',
+        href: recipesIndex(),
+        icon: ChefHat,
     },
     {
         title: t('nav.fitness_profile'),

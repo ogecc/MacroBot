@@ -13,6 +13,8 @@ class MealAnalysisController extends Controller
 
     public function store(MealAnalysisRequest $request): JsonResponse
     {
+        set_time_limit(90);
+
         $prompt = $this->buildPrompt($request->input('description'));
         $attachments = [];
 
@@ -21,9 +23,9 @@ class MealAnalysisController extends Controller
         }
 
         try {
-            $result = $this->analyzer->prompt($prompt, $attachments);
+            $result = $this->analyzer->prompt($prompt, $attachments, timeout: 60);
         } catch (\Throwable $e) {
-            logger()->error('MealAnalyzer failed: ' . $e->getMessage());
+            logger()->error('MealAnalyzer failed: '.$e->getMessage());
             $message = $e instanceof RateLimitedException
                 ? 'AI is busy right now. Please wait a moment and try again.'
                 : 'Failed to analyze meal. Please try again.';
@@ -42,7 +44,7 @@ class MealAnalysisController extends Controller
         $base = 'Analyze the meal and return the nutritional breakdown as structured JSON. Be as accurate as possible with calorie and macro estimates.';
 
         if ($description) {
-            $base .= ' Meal description: ' . $description;
+            $base .= ' Meal description: '.$description;
         }
 
         return $base;

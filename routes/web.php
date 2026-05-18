@@ -7,6 +7,8 @@ use App\Http\Controllers\FitnessProfileController;
 use App\Http\Controllers\MealAnalysisController;
 use App\Http\Controllers\MealController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\RecipeController;
+use App\Http\Controllers\RecipeGenerationController;
 use App\Http\Controllers\VoiceTranscriptionController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -33,6 +35,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('activities/analyze', [ActivityAnalysisController::class, 'store'])->name('activities.analyze')->middleware('throttle:20,60');
         Route::post('activities', [ActivityController::class, 'store'])->name('activities.store');
         Route::delete('activities/{activityLog}', [ActivityController::class, 'destroy'])->name('activities.destroy');
+
+        Route::post('recipes/generate', [RecipeGenerationController::class, 'store'])->name('recipes.generate')->middleware('throttle:10,60');
+        Route::post('recipes/{recipe}/eat', [RecipeController::class, 'eat'])->name('recipes.eat');
+        Route::resource('recipes', RecipeController::class)->only(['index', 'store', 'show', 'destroy']);
     });
 });
 

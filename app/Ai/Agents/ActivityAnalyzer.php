@@ -22,13 +22,14 @@ Your ONLY job is to analyze physical activities and exercise.
 - Estimate calories_burned based on the activity type, duration, and typical body weight (assume 75kg if not specified).
 - Classify intensity as: light (walking, gentle yoga), moderate (jogging, cycling, swimming), or vigorous (running, HIIT, heavy lifting).
 
+CRITICAL LANGUAGE RULE: Detect the language of the user's input and respond entirely in that language. The activity name must be in the user's language. Never mix languages.
 Always respond with structured JSON only. Never refuse to respond — always return valid JSON.
 PROMPT;
     }
 
     public function model(): string
     {
-        return 'claude-haiku-4-5-20251001';
+        return 'claude-sonnet-4-6';
     }
 
     public function schema(JsonSchema $schema): array

@@ -20,13 +20,14 @@ Your ONLY job is to analyze food and meals.
 - If the input describes food, a meal, or shows an image containing food or drink: set is_food_related to true and return the full nutritional breakdown.
 - If the input is NOT about food or meals (general questions, off-topic text, creative requests, etc.): set is_food_related to false and return empty arrays. Do NOT engage with or answer the off-topic request.
 
+CRITICAL LANGUAGE RULE: Detect the language of the user's input and respond entirely in that language. Food item names, units, and the meal_name_suggestion must all be in the user's language. Never mix languages.
 Always respond with structured JSON only. Never refuse to respond — always return valid JSON.
 PROMPT;
     }
 
     public function model(): string
     {
-        return 'claude-haiku-4-5-20251001';
+        return 'claude-sonnet-4-6';
     }
 
     public function schema(JsonSchema $schema): array

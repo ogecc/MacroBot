@@ -13,10 +13,12 @@ class ActivityAnalysisController extends Controller
 
     public function store(ActivityAnalysisRequest $request): JsonResponse
     {
+        set_time_limit(90);
+
         $prompt = $this->buildPrompt($request->input('description'));
 
         try {
-            $result = $this->analyzer->prompt($prompt);
+            $result = $this->analyzer->prompt($prompt, timeout: 60);
         } catch (\Throwable $e) {
             logger()->error('ActivityAnalyzer failed: '.$e->getMessage());
             $message = $e instanceof RateLimitedException
