@@ -471,32 +471,35 @@ const videoRef = ref<HTMLVideoElement | null>(null);
 
 let scanStream: MediaStream | null = null;
 let scanAnimationId: number | null = null;
+let zxingControls: { stop: () => void } | null = null;
 
 async function openBarcodeScanner() {
-    if (!('BarcodeDetector' in window)) {
-        analyzeError.value = 'Barcode scanning is not supported in this browser. Please use Chrome on Android.';
-        return;
-    }
     barcodeError.value = '';
     barcodeProduct.value = null;
     barcodeModalOpen.value = true;
 
     await nextTick();
 
+    if ('BarcodeDetector' in window) {
+        await startNativeScanLoop();
+    } else {
+        await startZxingScanLoop();
+    }
+}
+
+async function startNativeScanLoop() {
     try {
         scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         if (videoRef.value) {
             videoRef.value.srcObject = scanStream;
             await videoRef.value.play();
         }
-        startScanLoop();
     } catch {
-        barcodeError.value = 'Could not access camera. Please allow camera access and try again.';
+        analyzeError.value = 'Could not access camera. Please allow camera access and try again.';
         barcodeModalOpen.value = false;
+        return;
     }
-}
 
-function startScanLoop() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const detector = new (window as any).BarcodeDetector({
         formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
@@ -521,6 +524,29 @@ function startScanLoop() {
     scanAnimationId = requestAnimationFrame(loop);
 }
 
+async function startZxingScanLoop() {
+    try {
+        const { BrowserMultiFormatReader } = await import('@zxing/browser');
+        const reader = new BrowserMultiFormatReader();
+
+        zxingControls = await reader.decodeFromVideoDevice(
+            undefined,
+            videoRef.value!,
+            (result, error, controls) => {
+                if (result) {
+                    controls.stop();
+                    zxingControls = null;
+                    lookupBarcode(result.getText());
+                }
+                void error;
+            },
+        );
+    } catch {
+        analyzeError.value = 'Could not access camera. Please allow camera access and try again.';
+        barcodeModalOpen.value = false;
+    }
+}
+
 function stopScanning() {
     if (scanAnimationId !== null) {
         cancelAnimationFrame(scanAnimationId);
@@ -529,6 +555,10 @@ function stopScanning() {
     if (scanStream) {
         scanStream.getTracks().forEach((t) => t.stop());
         scanStream = null;
+    }
+    if (zxingControls) {
+        zxingControls.stop();
+        zxingControls = null;
     }
 }
 
