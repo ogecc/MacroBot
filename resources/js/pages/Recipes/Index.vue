@@ -173,7 +173,7 @@ const difficultyColor: Record<string, string> = {
 <template>
     <Head title="Recipes" />
 
-    <div class="mx-auto max-w-2xl space-y-6 px-4 py-6">
+    <div class="mx-auto w-full max-w-2xl space-y-6 px-4 py-6">
 
         <!-- Chef card -->
         <div class="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent p-5 shadow-sm">

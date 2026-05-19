@@ -99,7 +99,7 @@ const difficultyColor: Record<string, string> = {
 <template>
     <Head :title="recipe.title" />
 
-    <div class="mx-auto max-w-2xl space-y-6 px-4 py-6">
+    <div class="mx-auto w-full max-w-2xl space-y-6 px-4 py-6">
 
         <!-- Back link -->
         <Link :href="recipesIndex()" class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
