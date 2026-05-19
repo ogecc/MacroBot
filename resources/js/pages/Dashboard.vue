@@ -1388,13 +1388,13 @@ async function deleteMeal(mealId: number) {
                     <DialogDescription>{{ $t('dashboard.tap_to_edit') }}</DialogDescription>
                 </DialogHeader>
 
-                <form @submit.prevent="submitMeal" class="space-y-3">
+                <form @submit.prevent="submitMeal" class="space-y-3 min-w-0 w-full">
                     <!-- Meal name -->
                     <Input v-model="mealForm.name" :placeholder="$t('dashboard.meal_name_placeholder')" class="h-9 text-sm" />
                     <p v-if="mealForm.errors.name" class="text-xs text-destructive -mt-2">{{ mealForm.errors.name }}</p>
 
                     <!-- Total summary -->
-                    <div class="flex justify-between rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    <div class="flex justify-between rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground overflow-hidden">
                         <span class="font-medium text-foreground">{{ mealForm.items.reduce((s, i) => s + i.calories, 0) }} kcal</span>
                         <span>P {{ mealForm.items.reduce((s, i) => s + (i.protein_g || 0), 0).toFixed(0) }}g</span>
                         <span>C {{ mealForm.items.reduce((s, i) => s + (i.carbs_g || 0), 0).toFixed(0) }}g</span>
