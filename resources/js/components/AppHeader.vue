@@ -2,7 +2,6 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import { ChefHat, LayoutGrid, UserCog } from 'lucide-vue-next';
 import { computed } from 'vue';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,7 +45,7 @@ function isActive(href: string, exact: boolean): boolean {
     >
         <!-- Logo -->
         <Link :href="dashboard()" class="flex shrink-0 items-center">
-            <AppLogoIcon class="size-8 fill-current text-amber-500" />
+            <img src="/icon-192.png" alt="MacroBot" class="size-8 object-contain" />
         </Link>
 
         <!-- Spacer -->

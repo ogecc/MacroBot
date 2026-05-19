@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { Camera, ChartNoAxesColumn, CircleDot } from 'lucide-vue-next';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { dashboard, login, register } from '@/routes';
 
 withDefaults(
@@ -44,7 +43,7 @@ const features = [
             <!-- Brand -->
             <div class="space-y-4">
                 <div class="flex items-center justify-center gap-3">
-                    <AppLogoIcon class="size-10 fill-current text-amber-500" />
+                    <img src="/icon-192.png" alt="MacroBot" class="size-10 object-contain" />
                     <span class="text-3xl font-bold tracking-tight">MacroBot</span>
                 </div>
                 <p class="text-base text-muted-foreground leading-relaxed">

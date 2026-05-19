@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { home } from '@/routes';
 
 defineProps<{
@@ -15,7 +14,7 @@ defineProps<{
             <!-- Brand header -->
             <div class="flex flex-col items-center gap-3">
                 <Link :href="home()" class="flex items-center gap-2.5">
-                    <AppLogoIcon class="size-9 fill-current text-amber-500" />
+                    <img src="/icon-192.png" alt="MacroBot" class="size-9 object-contain" />
                     <span class="text-xl font-bold tracking-tight">MacroBot</span>
                 </Link>
                 <div class="space-y-1 text-center">
