@@ -22,7 +22,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('onboarding', [OnboardingController::class, 'edit'])->name('onboarding.edit');
     Route::post('onboarding', [OnboardingController::class, 'update'])->name('onboarding.update');
 
-    Route::middleware('profile.complete')->group(function () {
+    Route::middleware(['verified', 'profile.complete'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('fitness-profile', [FitnessProfileController::class, 'edit'])->name('fitness.edit');
         Route::put('fitness-profile', [FitnessProfileController::class, 'update'])->name('fitness.update');
