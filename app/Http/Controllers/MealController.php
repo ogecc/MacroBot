@@ -6,10 +6,7 @@ use App\Http\Requests\StoreMealRequest;
 use App\Http\Requests\UpdateMealRequest;
 use App\Models\Meal;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class MealController extends Controller
 {
@@ -19,13 +16,6 @@ class MealController extends Controller
         $meal->items()->createMany($request->validated('items'));
 
         return to_route('dashboard')->with('toast', ['type' => 'success', 'message' => 'Meal logged!']);
-    }
-
-    public function edit(Meal $meal): Response
-    {
-        Gate::authorize('update', $meal);
-
-        return Inertia::render('Meals/Edit', ['meal' => $meal->load('items')]);
     }
 
     public function update(UpdateMealRequest $request, Meal $meal): RedirectResponse

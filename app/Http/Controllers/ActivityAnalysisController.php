@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\AI\Agents\ActivityAnalyzer;
+use App\Ai\Agents\ActivityAnalyzer;
 use App\Http\Requests\ActivityAnalysisRequest;
 use Illuminate\Http\JsonResponse;
 use Laravel\Ai\Exceptions\RateLimitedException;

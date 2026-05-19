@@ -26,23 +26,23 @@ class RecipeController extends Controller
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:150'],
-            'prompt' => ['required', 'string'],
+            'prompt' => ['required', 'string', 'max:1000'],
             'meal_type' => ['nullable', 'string', 'max:50'],
-            'servings' => ['required', 'integer', 'min:1'],
-            'prep_time_min' => ['required', 'integer', 'min:0'],
-            'cook_time_min' => ['required', 'integer', 'min:0'],
+            'servings' => ['required', 'integer', 'min:1', 'max:100'],
+            'prep_time_min' => ['required', 'integer', 'min:0', 'max:1440'],
+            'cook_time_min' => ['required', 'integer', 'min:0', 'max:1440'],
             'cuisine' => ['nullable', 'string', 'max:50'],
             'difficulty' => ['required', 'string', 'max:50'],
-            'calories_per_serving' => ['required', 'integer', 'min:0'],
-            'protein_g' => ['required', 'numeric', 'min:0'],
-            'carbs_g' => ['required', 'numeric', 'min:0'],
-            'fat_g' => ['required', 'numeric', 'min:0'],
-            'why_recommended' => ['nullable', 'string'],
-            'ingredients' => ['required', 'array', 'min:1'],
-            'ingredients.*.amount' => ['required', 'string'],
-            'ingredients.*.name' => ['required', 'string'],
-            'steps' => ['required', 'array', 'min:1'],
-            'steps.*' => ['required', 'string'],
+            'calories_per_serving' => ['required', 'integer', 'min:0', 'max:99999'],
+            'protein_g' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'carbs_g' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'fat_g' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'why_recommended' => ['nullable', 'string', 'max:500'],
+            'ingredients' => ['required', 'array', 'min:1', 'max:100'],
+            'ingredients.*.amount' => ['required', 'string', 'max:100'],
+            'ingredients.*.name' => ['required', 'string', 'max:200'],
+            'steps' => ['required', 'array', 'min:1', 'max:50'],
+            'steps.*' => ['required', 'string', 'max:2000'],
         ]);
 
         $request->user()->recipes()->create($validated);
@@ -57,9 +57,9 @@ class RecipeController extends Controller
         ]);
     }
 
-    public function eat(Recipe $recipe): RedirectResponse
+    public function eat(Request $request, Recipe $recipe): RedirectResponse
     {
-        $meal = $recipe->user->meals()->create([
+        $meal = $request->user()->meals()->create([
             'name' => $recipe->title,
             'eaten_at' => now(),
         ]);

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\AI\Agents\RecipeChef;
+use App\Ai\Agents\RecipeChef;
 use App\Http\Requests\RecipeGenerationRequest;
 use App\Models\ActivityLog;
 use Illuminate\Http\JsonResponse;

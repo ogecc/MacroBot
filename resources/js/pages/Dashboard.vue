@@ -368,7 +368,11 @@ async function analyzeMeal() {
         mealForm.name = '';
         aiObservation.value = json.ai_observation ?? '';
         aiAddition.value = '';
-        aiReviewOpen.value = true;
+        if (mealImageFile.value) {
+            aiReviewOpen.value = true;
+        } else {
+            reviewOpen.value = true;
+        }
     } catch {
         analyzeError.value = t('dashboard.network_error');
     } finally {

@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'voice_transcription' => [
+        'enabled' => env('VOICE_TRANSCRIPTION_ENABLED', false),
+    ],
+
 ];

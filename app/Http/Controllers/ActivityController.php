@@ -25,10 +25,6 @@ class ActivityController extends Controller
 
     public function destroy(ActivityLog $activityLog): RedirectResponse
     {
-        if ($activityLog->user_id !== auth()->id()) {
-            abort(403);
-        }
-
         $activityLog->delete();
 
         return back();

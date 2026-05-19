@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link, usePage, router } from '@inertiajs/vue3';
+import { Form, Head, usePage, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LOCALES } from '@/i18n';
-import { send } from '@/routes/verification';
 
 const { t } = useI18n();
 const page = usePage();
@@ -23,8 +22,6 @@ const user = computed(() => page.props.auth.user);
 const currentLocale = computed(() => (page.props.locale as string) ?? 'en');
 
 defineProps<{
-    mustVerifyEmail: boolean;
-    status?: string;
     passwordRules: string;
 }>();
 
@@ -85,23 +82,7 @@ function changeLocale(locale: string) {
                     </p>
                 </div>
 
-                <div v-if="mustVerifyEmail && !user.email_verified_at">
-                    <p class="-mt-4 text-sm text-muted-foreground">
-                        {{ $t('settings.email_unverified') }}
-                        <Link
-                            :href="send()"
-                            as="button"
-                            class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
-                        >
-                            {{ $t('settings.resend_verification') }}
-                        </Link>
-                    </p>
-                    <div v-if="status === 'verification-link-sent'" class="mt-2 text-sm font-medium text-green-600">
-                        {{ $t('settings.verification_sent') }}
-                    </div>
-                </div>
-
-                <Button class="bg-amber-500 hover:bg-amber-600 text-white" :disabled="processing" data-test="update-profile-button">{{ $t('settings.save') }}</Button>
+<Button class="bg-amber-500 hover:bg-amber-600 text-white" :disabled="processing" data-test="update-profile-button">{{ $t('settings.save') }}</Button>
             </Form>
         </section>
 

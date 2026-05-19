@@ -91,7 +91,7 @@ class DashboardController extends Controller
             'targetWeight' => $user->userProfile->target_weight_kg ? (float) $user->userProfile->target_weight_kg : null,
             'todayActivities' => $todayActivities,
             'todayActivityCalories' => (int) $todayActivityCalories,
-            'voiceEnabled' => (bool) env('VOICE_TRANSCRIPTION_ENABLED', false),
+            'voiceEnabled' => (bool) config('services.voice_transcription.enabled'),
             'streak' => $streak,
             'tutorialSeen' => (bool) $user->userProfile->tutorial_seen,
         ]);

@@ -18,7 +18,7 @@ Route::inertia('/', 'Welcome', [
     'canRegister' => Features::enabled(Features::registration()),
 ])->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('onboarding', [OnboardingController::class, 'edit'])->name('onboarding.edit');
     Route::post('onboarding', [OnboardingController::class, 'update'])->name('onboarding.update');
 
@@ -29,7 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('fitness-profile/weight', [FitnessProfileController::class, 'updateWeight'])->name('fitness.weight');
         Route::patch('fitness-profile/goal-adjustment', [FitnessProfileController::class, 'updateGoalAdjustment'])->name('fitness.goalAdjustment');
         Route::post('meals/analyze', [MealAnalysisController::class, 'store'])->name('meals.analyze')->middleware('throttle:20,60');
-        Route::resource('meals', MealController::class)->except(['show', 'create', 'index']);
+        Route::resource('meals', MealController::class)->except(['show', 'create', 'index', 'edit']);
 
         Route::post('voice/transcribe', [VoiceTranscriptionController::class, 'store'])->name('voice.transcribe')->middleware('throttle:20,60');
 

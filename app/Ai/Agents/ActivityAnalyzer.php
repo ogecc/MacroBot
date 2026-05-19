@@ -1,6 +1,6 @@
 <?php
 
-namespace App\AI\Agents;
+namespace App\Ai\Agents;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Agent;

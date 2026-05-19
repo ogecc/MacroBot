@@ -11,6 +11,7 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
+            detectTls: 'caloriecounterlaravelapp.test',
             fonts: [
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],

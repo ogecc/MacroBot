@@ -16,8 +16,8 @@ class UpdateMealRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:100'],
             'eaten_at' => ['required', 'date'],
-            'notes' => ['nullable', 'string'],
-            'items' => ['required', 'array', 'min:1'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'items' => ['required', 'array', 'min:1', 'max:50'],
             'items.*.name' => ['required', 'string', 'max:150'],
             'items.*.quantity' => ['required', 'numeric', 'min:0'],
             'items.*.unit' => ['required', 'string', 'max:50'],
