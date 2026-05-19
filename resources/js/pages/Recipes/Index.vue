@@ -205,7 +205,6 @@ const difficultyColor: Record<string, string> = {
                     rows="2"
                     placeholder="Describe what you'd like to cook… e.g. &quot;I have chicken and spinach, make me something light&quot;"
                     class="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm leading-relaxed placeholder:text-muted-foreground/60 focus:outline-none"
-                    style="field-sizing: content; max-height: 140px;"
                     @keydown.enter.exact.prevent="generate"
                 />
                 <div class="flex items-center justify-end border-t border-border/40 px-3 py-2">
@@ -241,7 +240,7 @@ const difficultyColor: Record<string, string> = {
             <div
                 v-for="(recipe, i) in generatedRecipes"
                 :key="i"
-                class="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4"
+                class="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4 overflow-hidden min-w-0"
             >
                 <!-- Header row -->
                 <div class="flex items-start justify-between gap-3">
@@ -254,8 +253,8 @@ const difficultyColor: Record<string, string> = {
                             <span v-if="recipe.cuisine" class="text-xs text-muted-foreground">{{ recipe.cuisine }}</span>
                             <span v-if="recipe.meal_type" class="text-xs capitalize text-muted-foreground">· {{ recipe.meal_type }}</span>
                         </div>
-                        <h3 class="font-semibold leading-tight">{{ recipe.title }}</h3>
-                        <p class="mt-0.5 text-xs text-muted-foreground">{{ recipe.description }}</p>
+                        <h3 class="font-semibold leading-tight break-words">{{ recipe.title }}</h3>
+                        <p class="mt-0.5 text-xs text-muted-foreground break-words">{{ recipe.description }}</p>
                     </div>
                     <div class="flex shrink-0 items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
                         <Clock class="h-3 w-3" />
