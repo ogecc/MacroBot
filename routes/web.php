@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityAnalysisController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FitnessProfileController;
 use App\Http\Controllers\MealAnalysisController;
@@ -28,6 +29,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('fitness-profile', [FitnessProfileController::class, 'update'])->name('fitness.update');
         Route::patch('fitness-profile/weight', [FitnessProfileController::class, 'updateWeight'])->name('fitness.weight');
         Route::patch('fitness-profile/goal-adjustment', [FitnessProfileController::class, 'updateGoalAdjustment'])->name('fitness.goalAdjustment');
+        Route::get('meals/barcode/{barcode}', [BarcodeController::class, 'lookup'])->name('meals.barcode')->middleware('throttle:30,60');
         Route::post('meals/analyze', [MealAnalysisController::class, 'store'])->name('meals.analyze')->middleware('throttle:20,60');
         Route::resource('meals', MealController::class)->except(['show', 'create', 'index', 'edit']);
 

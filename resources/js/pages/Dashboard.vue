@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { dashboard } from '@/routes';
 import { store as mealStore, destroy as mealDestroy } from '@/actions/App/Http/Controllers/MealController';
 import { store as analyzeRoute } from '@/actions/App/Http/Controllers/MealAnalysisController';
+import { lookup as barcodeRoute } from '@/actions/App/Http/Controllers/BarcodeController';
 import { store as activityStore, destroy as activityDestroy } from '@/actions/App/Http/Controllers/ActivityController';
 import { store as analyzeActivityRoute } from '@/actions/App/Http/Controllers/ActivityAnalysisController';
 import { store as transcribeRoute } from '@/actions/App/Http/Controllers/VoiceTranscriptionController';
@@ -14,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import DialogScrollContent from '@/components/ui/dialog/DialogScrollContent.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
-import { ArrowUp, Camera, Mic, MicOff, Plus, Minus, UtensilsCrossed, Dumbbell, ChevronDown, ChevronRight, Loader2, Trash2, Flame, Scale, History, Zap, Sparkles, Target, ChefHat } from 'lucide-vue-next';
+import { ArrowUp, Camera, Mic, MicOff, Plus, Minus, UtensilsCrossed, Dumbbell, ChevronDown, ChevronRight, Loader2, Trash2, Flame, Scale, History, Zap, Sparkles, Target, ChefHat, ScanLine, AlertTriangle, PackageSearch } from 'lucide-vue-next';
 import { dismiss as tutorialDismiss } from '@/actions/App/Http/Controllers/TutorialController';
 
 const { t } = useI18n();
@@ -445,6 +446,154 @@ function submitMeal() {
     });
 }
 
+// ── Barcode scanner ───────────────────────────────────────────────────────────
+interface BarcodeProduct {
+    found: boolean;
+    barcode: string;
+    name: string | null;
+    brand: string | null;
+    image_url: string | null;
+    per_100g: { calories: number | null; protein_g: number | null; carbs_g: number | null; fat_g: number | null };
+    serving_size_label: string | null;
+    serving_quantity_g: number | null;
+    calories_missing: boolean;
+    missing_fields: string[];
+}
+
+const barcodeModalOpen = ref(false);
+const barcodeProduct = ref<BarcodeProduct | null>(null);
+const barcodeError = ref('');
+const barcodeLookingUp = ref(false);
+const barcodeQuantityGrams = ref(100);
+const barcodeQuantityServings = ref(1);
+const barcodeQuantityMode = ref<'grams' | 'servings'>('grams');
+const videoRef = ref<HTMLVideoElement | null>(null);
+
+let scanStream: MediaStream | null = null;
+let scanAnimationId: number | null = null;
+
+async function openBarcodeScanner() {
+    if (!('BarcodeDetector' in window)) {
+        analyzeError.value = 'Barcode scanning is not supported in this browser. Please use Chrome on Android.';
+        return;
+    }
+    barcodeError.value = '';
+    barcodeProduct.value = null;
+    barcodeModalOpen.value = true;
+
+    await nextTick();
+
+    try {
+        scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        if (videoRef.value) {
+            videoRef.value.srcObject = scanStream;
+            await videoRef.value.play();
+        }
+        startScanLoop();
+    } catch {
+        barcodeError.value = 'Could not access camera. Please allow camera access and try again.';
+        barcodeModalOpen.value = false;
+    }
+}
+
+function startScanLoop() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const detector = new (window as any).BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
+    });
+
+    async function loop() {
+        if (!videoRef.value || videoRef.value.readyState < 2) {
+            scanAnimationId = requestAnimationFrame(loop);
+            return;
+        }
+        try {
+            const results = await detector.detect(videoRef.value);
+            if (results.length > 0) {
+                stopScanning();
+                await lookupBarcode(results[0].rawValue);
+                return;
+            }
+        } catch { /* continue scanning */ }
+        scanAnimationId = requestAnimationFrame(loop);
+    }
+
+    scanAnimationId = requestAnimationFrame(loop);
+}
+
+function stopScanning() {
+    if (scanAnimationId !== null) {
+        cancelAnimationFrame(scanAnimationId);
+        scanAnimationId = null;
+    }
+    if (scanStream) {
+        scanStream.getTracks().forEach((t) => t.stop());
+        scanStream = null;
+    }
+}
+
+function closeBarcodeScanner() {
+    stopScanning();
+    barcodeModalOpen.value = false;
+    barcodeProduct.value = null;
+    barcodeError.value = '';
+}
+
+async function lookupBarcode(code: string) {
+    barcodeModalOpen.value = false;
+    barcodeLookingUp.value = true;
+
+    try {
+        const res = await fetch(barcodeRoute(code).url, {
+            headers: { Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() },
+        });
+
+        const data: BarcodeProduct = await res.json();
+
+        if (!data.found) {
+            analyzeError.value = 'Product not found in database. Please take a photo of the nutritional label instead.';
+            return;
+        }
+
+        if (data.calories_missing) {
+            analyzeError.value = 'Calorie data is missing for this product. Please take a photo of the nutritional label instead.';
+            return;
+        }
+
+        barcodeProduct.value = data;
+        barcodeQuantityGrams.value = 100;
+        barcodeQuantityServings.value = 1;
+        barcodeQuantityMode.value = 'grams';
+    } catch {
+        analyzeError.value = 'Failed to look up product. Please try again.';
+    } finally {
+        barcodeLookingUp.value = false;
+    }
+}
+
+function addBarcodeProductToMeal() {
+    if (!barcodeProduct.value) return;
+
+    const p = barcodeProduct.value;
+    const grams = barcodeQuantityMode.value === 'servings' && p.serving_quantity_g
+        ? barcodeQuantityServings.value * p.serving_quantity_g
+        : barcodeQuantityGrams.value;
+    const ratio = grams / 100;
+
+    mealForm.items = [{
+        name: [p.brand, p.name].filter(Boolean).join(' – ') || 'Product',
+        quantity: grams,
+        unit: 'g',
+        calories: Math.round((p.per_100g.calories ?? 0) * ratio),
+        protein_g: parseFloat(((p.per_100g.protein_g ?? 0) * ratio).toFixed(1)),
+        carbs_g: parseFloat(((p.per_100g.carbs_g ?? 0) * ratio).toFixed(1)),
+        fat_g: parseFloat(((p.per_100g.fat_g ?? 0) * ratio).toFixed(1)),
+    }];
+    mealForm.name = '';
+    barcodeProduct.value = null;
+    reviewOpen.value = true;
+}
+
 // ── Tracker tab switcher ──────────────────────────────────────────────────────
 const activeTracker = ref<'meal' | 'activity'>('meal');
 const slideDirection = ref<'right' | 'left'>('right');
@@ -645,6 +794,15 @@ async function deleteMeal(mealId: number) {
                                             <input ref="fileInputRef" type="file" accept="image/*" class="sr-only" @change="onImageChange" />
                                         </label>
                                         <button
+                                            type="button"
+                                            class="flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-muted/40 text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:opacity-50"
+                                            :disabled="barcodeLookingUp"
+                                            @click="openBarcodeScanner"
+                                        >
+                                            <Loader2 v-if="barcodeLookingUp" class="h-3.5 w-3.5 animate-spin" />
+                                            <ScanLine v-else class="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
                                             v-if="voiceEnabled"
                                             type="button"
                                             class="flex h-7 w-7 items-center justify-center rounded-full border transition"
@@ -668,6 +826,81 @@ async function deleteMeal(mealId: number) {
                                 </div>
                             </div>
                             <p v-if="analyzeError" class="px-1 text-xs text-destructive">{{ analyzeError }}</p>
+
+                            <!-- Barcode product card -->
+                            <div v-if="barcodeProduct" class="rounded-xl border border-border bg-card p-4 space-y-3">
+                                <!-- Product header -->
+                                <div class="flex items-start gap-3">
+                                    <img v-if="barcodeProduct.image_url" :src="barcodeProduct.image_url" class="h-12 w-12 rounded-lg object-contain border border-border bg-muted/30 shrink-0" />
+                                    <PackageSearch v-else class="h-12 w-12 shrink-0 rounded-lg border border-border bg-muted/30 p-2.5 text-muted-foreground" />
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-sm leading-tight break-words">{{ barcodeProduct.name ?? 'Unknown product' }}</p>
+                                        <p v-if="barcodeProduct.brand" class="text-xs text-muted-foreground mt-0.5">{{ barcodeProduct.brand }}</p>
+                                        <p class="text-[10px] text-muted-foreground mt-0.5">Per 100g: {{ barcodeProduct.per_100g.calories }} kcal · P {{ barcodeProduct.per_100g.protein_g ?? '?' }}g · C {{ barcodeProduct.per_100g.carbs_g ?? '?' }}g · F {{ barcodeProduct.per_100g.fat_g ?? '?' }}g</p>
+                                    </div>
+                                </div>
+
+                                <!-- Missing fields warning -->
+                                <div v-if="barcodeProduct.missing_fields.length" class="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2">
+                                    <AlertTriangle class="h-3.5 w-3.5 shrink-0 text-amber-500 mt-0.5" />
+                                    <p class="text-xs text-amber-600 dark:text-amber-400">
+                                        Missing data for this product: {{ barcodeProduct.missing_fields.map(f => f.replace('_g', '').replace('_', ' ')).join(', ') }}. These will be set to 0.
+                                    </p>
+                                </div>
+
+                                <!-- Quantity mode tabs -->
+                                <div class="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+                                    <button
+                                        type="button"
+                                        class="flex-1 py-1.5 transition-colors"
+                                        :class="barcodeQuantityMode === 'grams' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'"
+                                        @click="barcodeQuantityMode = 'grams'"
+                                    >By grams</button>
+                                    <button
+                                        v-if="barcodeProduct.serving_quantity_g"
+                                        type="button"
+                                        class="flex-1 py-1.5 transition-colors border-l border-border"
+                                        :class="barcodeQuantityMode === 'servings' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'"
+                                        @click="barcodeQuantityMode = 'servings'"
+                                    >By serving{{ barcodeProduct.serving_size_label ? ` (${barcodeProduct.serving_size_label})` : '' }}</button>
+                                </div>
+
+                                <!-- Quantity input -->
+                                <div v-if="barcodeQuantityMode === 'grams'" class="flex items-center gap-2">
+                                    <Input v-model.number="barcodeQuantityGrams" type="number" min="1" max="9999" class="h-9 text-sm" />
+                                    <span class="text-sm text-muted-foreground shrink-0">grams</span>
+                                </div>
+                                <div v-else class="flex items-center gap-2">
+                                    <Input v-model.number="barcodeQuantityServings" type="number" min="0.5" max="99" step="0.5" class="h-9 text-sm" />
+                                    <span class="text-sm text-muted-foreground shrink-0">serving(s) = {{ barcodeProduct.serving_quantity_g ? Math.round(barcodeQuantityServings * barcodeProduct.serving_quantity_g) : '?' }}g</span>
+                                </div>
+
+                                <!-- Calculated totals -->
+                                <div class="grid grid-cols-4 gap-1 text-center text-xs">
+                                    <div class="rounded-lg bg-muted/40 px-2 py-1.5">
+                                        <p class="text-muted-foreground">kcal</p>
+                                        <p class="font-semibold">{{ Math.round((barcodeProduct.per_100g.calories ?? 0) * (barcodeQuantityMode === 'grams' ? barcodeQuantityGrams : barcodeQuantityServings * (barcodeProduct.serving_quantity_g ?? 100)) / 100) }}</p>
+                                    </div>
+                                    <div class="rounded-lg bg-muted/40 px-2 py-1.5">
+                                        <p class="text-muted-foreground">Prot</p>
+                                        <p class="font-semibold text-blue-500">{{ ((barcodeProduct.per_100g.protein_g ?? 0) * (barcodeQuantityMode === 'grams' ? barcodeQuantityGrams : barcodeQuantityServings * (barcodeProduct.serving_quantity_g ?? 100)) / 100).toFixed(1) }}g</p>
+                                    </div>
+                                    <div class="rounded-lg bg-muted/40 px-2 py-1.5">
+                                        <p class="text-muted-foreground">Carb</p>
+                                        <p class="font-semibold text-amber-500">{{ ((barcodeProduct.per_100g.carbs_g ?? 0) * (barcodeQuantityMode === 'grams' ? barcodeQuantityGrams : barcodeQuantityServings * (barcodeProduct.serving_quantity_g ?? 100)) / 100).toFixed(1) }}g</p>
+                                    </div>
+                                    <div class="rounded-lg bg-muted/40 px-2 py-1.5">
+                                        <p class="text-muted-foreground">Fat</p>
+                                        <p class="font-semibold text-rose-400">{{ ((barcodeProduct.per_100g.fat_g ?? 0) * (barcodeQuantityMode === 'grams' ? barcodeQuantityGrams : barcodeQuantityServings * (barcodeProduct.serving_quantity_g ?? 100)) / 100).toFixed(1) }}g</p>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex gap-2">
+                                    <Button type="button" variant="outline" class="flex-1 h-9 text-xs" @click="barcodeProduct = null">Cancel</Button>
+                                    <Button type="button" class="flex-1 h-9 text-xs" @click="addBarcodeProductToMeal">Add to Meal</Button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Activity panel -->
@@ -1059,6 +1292,25 @@ async function deleteMeal(mealId: number) {
                         {{ savingAdjustment ? $t('dashboard.saving') : $t('dashboard.save') }}
                     </Button>
                 </div>
+            </DialogScrollContent>
+        </Dialog>
+
+        <!-- Barcode scanner modal -->
+        <Dialog :open="barcodeModalOpen" @update:open="(v) => { if (!v) closeBarcodeScanner() }">
+            <DialogScrollContent class="max-w-sm gap-2">
+                <DialogHeader>
+                    <DialogTitle>Scan Barcode</DialogTitle>
+                    <DialogDescription>Point the camera at a product barcode</DialogDescription>
+                </DialogHeader>
+                <div class="relative overflow-hidden rounded-xl bg-black aspect-[3/4]">
+                    <video ref="videoRef" autoplay playsinline muted class="h-full w-full object-cover" />
+                    <!-- Scanning frame overlay -->
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="h-48 w-64 rounded-lg border-2 border-amber-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
+                    </div>
+                    <p class="absolute bottom-4 left-0 right-0 text-center text-xs text-white/80">Scanning…</p>
+                </div>
+                <Button type="button" variant="outline" class="w-full h-9" @click="closeBarcodeScanner">Cancel</Button>
             </DialogScrollContent>
         </Dialog>
 
