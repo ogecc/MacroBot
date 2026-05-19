@@ -638,9 +638,9 @@ async function deleteMeal(mealId: number) {
                                 />
                                 <div class="flex items-center justify-between gap-2 border-t border-border/40 px-3 py-2">
                                     <div class="flex items-center gap-1.5">
-                                        <label class="flex cursor-pointer items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-primary">
-                                            <Camera class="h-3.5 w-3.5" />
-                                            <span>{{ mealImageFile ? mealImageFile.name : $t('dashboard.add_photo') }}</span>
+                                        <label class="flex min-w-0 max-w-[180px] cursor-pointer items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-primary">
+                                            <Camera class="h-3.5 w-3.5 shrink-0" />
+                                            <span class="truncate">{{ mealImageFile ? mealImageFile.name : $t('dashboard.add_photo') }}</span>
                                             <button v-if="mealImageFile" type="button" class="ml-0.5 text-destructive" @click.prevent="mealImageFile = null">✕</button>
                                             <input ref="fileInputRef" type="file" accept="image/*" class="sr-only" @change="onImageChange" />
                                         </label>
