@@ -195,6 +195,22 @@
     "dark": "Dunkel",
     "system": "System"
   },
+  "tutorial": {
+    "slide1_title": "Willkommen bei MacroBot",
+    "slide1_body": "Dein KI-Ernaehrungsbegleiter. Protokolliere Mahlzeiten, verfolge Aktivitaeten und erreiche deine Kalorienziele.",
+    "slide2_title": "Mahlzeiten mit KI erfassen",
+    "slide2_body": "Mach ein Foto oder beschreibe, was du gegessen hast. MacroBot analysiert sofort Kalorien, Protein, Kohlenhydrate und Fett.",
+    "slide3_title": "Aktivitaeten verfolgen",
+    "slide3_body": "Beschreibe dein Training und die KI schaetzt die verbrannten Kalorien. Dein Tagesziel passt sich automatisch an.",
+    "slide4_title": "Deinen Kalorienring beobachten",
+    "slide4_body": "Der Ring fuellt sich mit deinen Mahlzeiten. Bleib im gruenen Bereich, um dein Ziel zu erreichen.",
+    "slide5_title": "KI-Koch-Rezepte",
+    "slide5_body": "Entdecke KI-generierte Rezepte passend zu deinem Ziel. Tippe auf 'Ich habe das gegessen' und MacroBot erfasst die Mahlzeit.",
+    "next": "Weiter",
+    "back": "Zurueck",
+    "skip": "Ueberspringen",
+    "get_started": "Loslegen"
+  },
   "auth": {
     "log_in_title": "Bei deinem Konto anmelden",
     "log_in_desc": "Gib deine E-Mail und dein Passwort ein, um dich anzumelden",

@@ -25,6 +25,7 @@ class UserProfile extends Model
         'target_weight_kg',
         'daily_calorie_goal',
         'locale',
+        'tutorial_seen',
     ];
 
     protected function casts(): array

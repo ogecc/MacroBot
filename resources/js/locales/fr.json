@@ -195,6 +195,22 @@
     "dark": "Sombre",
     "system": "Système"
   },
+  "tutorial": {
+    "slide1_title": "Bienvenue sur MacroBot",
+    "slide1_body": "Votre assistant nutritionnel IA. Enregistrez vos repas, suivez vos activites et atteignez vos objectifs caloriques.",
+    "slide2_title": "Enregistrez vos repas avec l'IA",
+    "slide2_body": "Prenez une photo ou decrivez ce que vous avez mange. MacroBot analyse instantanement calories, proteines, glucides et lipides.",
+    "slide3_title": "Suivez vos activites",
+    "slide3_body": "Decrivez votre entrainement et l'IA estime les calories brulees. Votre objectif journalier s'ajuste automatiquement.",
+    "slide4_title": "Surveillez votre anneau calorique",
+    "slide4_body": "L'anneau se remplit au fil de vos repas. Restez dans le vert pour atteindre votre objectif.",
+    "slide5_title": "Recettes du chef IA",
+    "slide5_body": "Parcourez des recettes generees par l'IA selon vos objectifs. Appuyez sur 'J'ai mange ca' pour enregistrer le repas.",
+    "next": "Suivant",
+    "back": "Retour",
+    "skip": "Passer",
+    "get_started": "Commencer"
+  },
   "auth": {
     "log_in_title": "Connectez-vous à votre compte",
     "log_in_desc": "Entrez votre e-mail et mot de passe pour vous connecter",

@@ -34,7 +34,7 @@ defineProps<{
         class="space-y-6 text-center"
         v-slot="{ processing }"
     >
-        <Button :disabled="processing" variant="secondary">
+        <Button :disabled="processing" class="bg-amber-500 hover:bg-amber-600 text-white">
             <Spinner v-if="processing" />
             {{ $t('auth.resend_verification') }}
         </Button>

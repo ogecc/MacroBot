@@ -195,6 +195,22 @@
     "dark": "Tamno",
     "system": "Sistem"
   },
+  "tutorial": {
+    "slide1_title": "Dobrodosli u MacroBot",
+    "slide1_body": "Vas AI pratioc za ishranu. Belezite obroke, pratite aktivnosti i dostignite kalorijaske ciljeve.",
+    "slide2_title": "Belezite obroke uz AI",
+    "slide2_body": "Slikajte ili opisite sta ste jeli. MacroBot odmah analizira kalorije, proteine, ugljene hidrate i masti.",
+    "slide3_title": "Pratite aktivnosti",
+    "slide3_body": "Opisite trening i AI procenjuje potrosene kalorije. Dnevni cilj se automatski prilagodjava.",
+    "slide4_title": "Pratite kalorijski prsten",
+    "slide4_body": "Prsten se puni kako jedete. Ostanite u zelenoj zoni da dostignete cilj.",
+    "slide5_title": "AI receprti kuvara",
+    "slide5_body": "Pregledajte AI recepte prilagodjene vasim ciljevima. Pritisnite 'Pojeo sam ovo' i MacroBot belezi obrok.",
+    "next": "Dalje",
+    "back": "Nazad",
+    "skip": "Preskoci",
+    "get_started": "Pocni"
+  },
   "auth": {
     "log_in_title": "Prijavite se na nalog",
     "log_in_desc": "Unesite e-poštu i lozinku za prijavu",

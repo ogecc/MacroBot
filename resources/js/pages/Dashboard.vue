@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import DialogScrollContent from '@/components/ui/dialog/DialogScrollContent.vue';
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
-import { ArrowUp, Camera, Mic, MicOff, Plus, Minus, UtensilsCrossed, Dumbbell, ChevronDown, ChevronRight, Loader2, Trash2, Flame, Scale, History, Zap } from 'lucide-vue-next';
+import { ArrowUp, Camera, Mic, MicOff, Plus, Minus, UtensilsCrossed, Dumbbell, ChevronDown, ChevronRight, Loader2, Trash2, Flame, Scale, History, Zap, Sparkles, Target, ChefHat } from 'lucide-vue-next';
+import { dismiss as tutorialDismiss } from '@/actions/App/Http/Controllers/TutorialController';
 
 const { t } = useI18n();
 
@@ -86,6 +87,7 @@ const props = defineProps<{
     todayActivityCalories: number;
     voiceEnabled: boolean;
     streak: number;
+    tutorialSeen: boolean;
 }>();
 
 // ── Today date label ─────────────────────────────────────────────────────────
@@ -93,6 +95,37 @@ const todayLabel = ref('');
 onMounted(() => {
     todayLabel.value = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 });
+
+// ── Tutorial ──────────────────────────────────────────────────────────────────
+const tutorialOpen = ref(!props.tutorialSeen);
+const tutorialStep = ref(0);
+const tutorialSlides = computed(() => [
+    { icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/10', title: t('tutorial.slide1_title'), body: t('tutorial.slide1_body') },
+    { icon: Camera, color: 'text-sky-500', bg: 'bg-sky-500/10', title: t('tutorial.slide2_title'), body: t('tutorial.slide2_body') },
+    { icon: Dumbbell, color: 'text-green-500', bg: 'bg-green-500/10', title: t('tutorial.slide3_title'), body: t('tutorial.slide3_body') },
+    { icon: Target, color: 'text-rose-500', bg: 'bg-rose-500/10', title: t('tutorial.slide4_title'), body: t('tutorial.slide4_body') },
+    { icon: ChefHat, color: 'text-purple-500', bg: 'bg-purple-500/10', title: t('tutorial.slide5_title'), body: t('tutorial.slide5_body') },
+]);
+
+async function dismissTutorial(): Promise<void> {
+    tutorialOpen.value = false;
+    await fetch(tutorialDismiss.url(), {
+        method: 'POST',
+        headers: { 'X-XSRF-TOKEN': getCsrf(), 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+}
+
+function tutorialNext(): void {
+    if (tutorialStep.value < tutorialSlides.value.length - 1) {
+        tutorialStep.value++;
+    } else {
+        dismissTutorial();
+    }
+}
+
+function tutorialBack(): void {
+    if (tutorialStep.value > 0) tutorialStep.value--;
+}
 
 // ── Calorie ring ──────────────────────────────────────────────────────────────
 interface AdjustmentOption {
@@ -793,12 +826,12 @@ async function deleteMeal(mealId: number) {
                 <button
                     v-if="currentOption"
                     type="button"
-                    class="mt-2.5 flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium transition hover:bg-white/5"
+                    class="mt-2.5 flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium transition active:scale-95"
                     :class="goalBadgeColor"
                     @click="openAdjustmentModal"
                 >
                     {{ currentOption.tag }}
-                    <span class="opacity-50">✎</span>
+                    <ChevronDown class="h-2.5 w-2.5 opacity-60" />
                 </button>
             </div>
 
@@ -1149,6 +1182,68 @@ async function deleteMeal(mealId: number) {
                         </Button>
                     </div>
                 </form>
+            </DialogScrollContent>
+        </Dialog>
+
+        <!-- Tutorial modal -->
+        <Dialog :open="tutorialOpen" @update:open="(v) => { if (!v) dismissTutorial() }">
+            <DialogScrollContent class="max-w-sm gap-0 p-0 overflow-hidden">
+                <!-- Slide content -->
+                <div class="px-6 pt-8 pb-6 flex flex-col items-center text-center gap-4">
+                    <!-- Icon -->
+                    <div
+                        class="flex h-16 w-16 items-center justify-center rounded-2xl transition-all duration-300"
+                        :class="tutorialSlides[tutorialStep].bg"
+                    >
+                        <component :is="tutorialSlides[tutorialStep].icon" class="h-8 w-8 transition-all duration-300" :class="tutorialSlides[tutorialStep].color" />
+                    </div>
+
+                    <!-- Text -->
+                    <div class="space-y-2">
+                        <h2 class="text-lg font-semibold leading-tight">{{ tutorialSlides[tutorialStep].title }}</h2>
+                        <p class="text-sm text-muted-foreground leading-relaxed">{{ tutorialSlides[tutorialStep].body }}</p>
+                    </div>
+                </div>
+
+                <!-- Dot indicators -->
+                <div class="flex justify-center gap-1.5 pb-4">
+                    <button
+                        v-for="(_, i) in tutorialSlides"
+                        :key="i"
+                        type="button"
+                        class="h-1.5 rounded-full transition-all duration-300"
+                        :class="i === tutorialStep ? 'w-5 bg-foreground' : 'w-1.5 bg-foreground/20'"
+                        @click="tutorialStep = i"
+                    />
+                </div>
+
+                <!-- Actions -->
+                <div class="border-t px-6 py-4 flex items-center justify-between gap-3">
+                    <button
+                        v-if="tutorialStep > 0"
+                        type="button"
+                        class="text-sm text-muted-foreground hover:text-foreground transition"
+                        @click="tutorialBack"
+                    >
+                        {{ $t('tutorial.back') }}
+                    </button>
+                    <button
+                        v-else
+                        type="button"
+                        class="text-sm text-muted-foreground hover:text-foreground transition"
+                        @click="dismissTutorial"
+                    >
+                        {{ $t('tutorial.skip') }}
+                    </button>
+
+                    <Button
+                        type="button"
+                        class="ml-auto bg-amber-500 hover:bg-amber-600 text-white h-9 px-5"
+                        @click="tutorialNext"
+                    >
+                        {{ tutorialStep < tutorialSlides.length - 1 ? $t('tutorial.next') : $t('tutorial.get_started') }}
+                    </Button>
+                </div>
             </DialogScrollContent>
         </Dialog>
     </div>

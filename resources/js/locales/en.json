@@ -195,6 +195,22 @@
     "dark": "Dark",
     "system": "System"
   },
+  "tutorial": {
+    "slide1_title": "Welcome to MacroBot",
+    "slide1_body": "Your AI-powered nutrition companion. Log meals, track activities, and hit your calorie goals — all in one place.",
+    "slide2_title": "Log Meals with AI",
+    "slide2_body": "Take a photo or describe what you ate. MacroBot's AI instantly breaks it down into calories, protein, carbs, and fat.",
+    "slide3_title": "Track Your Activities",
+    "slide3_body": "Describe your workout and the AI estimates your calories burned. Your daily calorie target adjusts automatically.",
+    "slide4_title": "Watch Your Calorie Ring",
+    "slide4_body": "The ring on your dashboard fills as you eat. Stay in the green to hit your goal — the ring turns red if you go over.",
+    "slide5_title": "AI Chef Recipes",
+    "slide5_body": "Browse AI-generated recipes tailored to your goal. Tap 'I ate this' and MacroBot logs the meal for you instantly.",
+    "next": "Next",
+    "back": "Back",
+    "skip": "Skip",
+    "get_started": "Get Started"
+  },
   "auth": {
     "log_in_title": "Log in to your account",
     "log_in_desc": "Enter your email and password below to log in",

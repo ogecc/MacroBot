@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -59,7 +60,7 @@ class DashboardController extends Controller
         $mealDates = $user->meals()
             ->orderByDesc('eaten_at')
             ->pluck('eaten_at')
-            ->map(fn ($dt) => \Carbon\Carbon::parse($dt)->toDateString())
+            ->map(fn ($dt) => Carbon::parse($dt)->toDateString())
             ->unique()
             ->values();
 
@@ -92,6 +93,7 @@ class DashboardController extends Controller
             'todayActivityCalories' => (int) $todayActivityCalories,
             'voiceEnabled' => (bool) env('VOICE_TRANSCRIPTION_ENABLED', false),
             'streak' => $streak,
+            'tutorialSeen' => (bool) $user->userProfile->tutorial_seen,
         ]);
     }
 }
