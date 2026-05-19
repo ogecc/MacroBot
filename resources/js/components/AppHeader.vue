@@ -42,7 +42,7 @@ function isActive(href: string, exact: boolean): boolean {
 
 <template>
     <header
-        class="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/95 px-5 backdrop-blur"
+        class="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/95 px-3 sm:px-5 backdrop-blur"
     >
         <!-- Logo -->
         <Link :href="dashboard()" class="flex shrink-0 items-center">
@@ -67,8 +67,8 @@ function isActive(href: string, exact: boolean): boolean {
             >
                 <component :is="item.icon" class="h-[22px] w-[22px] shrink-0" />
                 <span
-                    class="overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300 ease-in-out"
-                    :class="isActive(item.href, item.exact) ? 'max-w-24 opacity-100' : 'max-w-0 opacity-0'"
+                    class="hidden sm:block overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300 ease-in-out"
+                    :class="isActive(item.href, item.exact) ? 'sm:max-w-24 sm:opacity-100' : 'sm:max-w-0 sm:opacity-0'"
                 >{{ item.label }}</span>
             </Link>
 
